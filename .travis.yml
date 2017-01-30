@@ -6,7 +6,8 @@ deploy:
   provider: lambda
   function_name: "test-testDB-mobilehub-1224168025"
   role: "arn:aws:iam::564557744843:role/MOBILEHUB-1224168025-Developme-lambdaexecutionrole-ZSSVNGLO9641"
-  handler_name: "uk.ac.cam.cl.quebec.api.TestDB::testDBHandler"
+  handler_name: "TestDB::handleRequest"
+  module_name: "uk.ac.cam.cl.quebec.api"
   zip: "build/distributions/quebec-1.0-SNAPSHOT.zip"
   access_key_id: "AKIAI4YI5BWDLBVO63CQ"
   publish: false
