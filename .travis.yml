@@ -1,1 +1,11 @@
 language: java
+
+deploy:
+  provider: lambda
+  function_name: "arn:aws:lambda:eu-west-1:564557744843:function:users-testDBHandler-mobilehub-1477127712"
+  role: "arn:aws:iam::564557744843:role/MOBILEHUB-1477127712-Developme-lambdaexecutionrole-11XMCJ2RV9D54"
+  handler_name: "uk.ac.cam.cl.quebec.api.TestDB::testDBHandler"
+  zip: "build/distributions/quebec-1.0-SNAPSHOT.zip"
+  access_key_id: "AKIAI4YI5BWDLBVO63CQ"
+  secret_access_key:
+    secure: tWtDzbwHb+jT/xIuUlKVIgV0mB+H9AJAAJdsXGGy9SeBV6wU79paENwe2Z3Duv94Qn5XMueTFQDFxZA6bVcJTJjD4JxsOR52JeUInehfkKDbrP6yuZEJYlOSCnYL30Hq+wEasVRZ61agBr/bDvbC4EvslO18uloVRHaj+7q/Qx+cxRJL/Y/4UqVQhoKpgvFon+Q2MxBdq26S6ams66jmvkgbM/1mnvhiZcyIBsoHkmhRg+SQ0AT+n73s9NJhGki1pmurgCXzdGWQJ0Qele3583Xp0+V+NMv+NwP4kcEIVLU/a0fJn8hEwzou17mMm6PHUwoK+X1C5gmX8vkmHBJH1Mw01CrP8YFN6mEEPkBGGvKK3W87adK4yfyO0rGv1TPhBO0JTHzLsYocN/hKHDvdesTzFhHxG3HUjoOnmRa9/tVxyeElbJY60iKqQwm3/aXkKL7/4Uhn0Pv+sF47bFdXdneV1Hytw5+LGYJF1ojbiJJ+z0rzLOyQyk8Sv3EmsN9mG5D5pN2PggpuUt5buCoZd9f9sr7wVPlkLf78L+99G2M7RkTb4zioNt8eawyJtoITksiI92uCSFsooHFUnUBh9K0I8F+3XjMfYdxoEpbI51QkYfU9PEmjxqBDKm4a8/cpm1uDGLp/3O/M5ojB5egXIeHVc6XMe2J97gxBJQM0Fvg=
