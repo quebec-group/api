@@ -15,20 +15,7 @@ import java.nio.charset.Charset;
 // uk.ac.cam.cl.quebec.api.TestDB::handleRequest
 public class TestDB implements RequestHandler<Object, String> {
 
-    private static String DB_PASS = decryptKey();
-    private static String decryptKey() {
-        System.out.println("Decrypting key");
-        byte[] encryptedKey = Base64.decode(System.getenv("grapheneDBPass"));
-
-        AWSKMS client = AWSKMSClientBuilder.defaultClient();
-
-        DecryptRequest request = new DecryptRequest()
-                .withCiphertextBlob(ByteBuffer.wrap(encryptedKey));
-
-        ByteBuffer plainTextKey = client.decrypt(request).getPlaintext();
-        return new String(plainTextKey.array(), Charset.forName("UTF-8"));
-    }
-
+    private static String DB_PASS = System.getenv("grapheneDBPass");
 
 
     @Override
