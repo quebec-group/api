@@ -12,7 +12,8 @@ dependencies {
     compile (
             'com.amazonaws:aws-lambda-java-core:1.1.0',
             'com.amazonaws:aws-lambda-java-events:1.1.0',
-            'org.neo4j.driver:neo4j-java-driver:1.1.1'
+            'org.neo4j.driver:neo4j-java-driver:1.1.1',
+            'com.googlecode.json-simple:json-simple:1.1.1'
     )
     testCompile group: 'junit', name: 'junit', version: '4.11'
 }
