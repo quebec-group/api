@@ -2,52 +2,30 @@ package uk.ac.cam.cl.quebec.api;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
-import com.amazonaws.services.lambda.runtime.RequestStreamHandler;
+import com.amazonaws.services.lambda.runtime.RequestHandler;
 import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
 import org.neo4j.driver.v1.*;
 
-import java.io.*;
-
 // uk.ac.cam.cl.quebec.api.TestDB::handleRequest
-public class TestDB implements RequestStreamHandler {
+public class TestDB implements RequestHandler<JSONObject, JSONObject> {
 
     private static String DB_PASS = System.getenv("grapheneDBPass");
 
-    JSONParser parser = new JSONParser();
-
     @Override
-    public void handleRequest(InputStream input, OutputStream output, Context context) throws IOException {
+    public JSONObject handleRequest(JSONObject input, Context context) {
         LambdaLogger logger = context.getLogger();
-        logger.log("Loading Java Lambda handler of ProxyWithStream");
+        logger.log("Loading Java Lambda handler simple\n");
 
+        JSONObject responseBody = new JSONObject();
+        responseBody.put("message", getDatabaseQueryResult());
 
-        BufferedReader reader = new BufferedReader(new InputStreamReader(input));
         JSONObject responseJson = new JSONObject();
-        String responseCode = "200";
+        responseJson.put("statusCode", "200");
+        responseJson.put("headers", new JSONObject());
+        responseJson.put("body", responseBody.toString());
 
-        try {
-            JSONObject event = (JSONObject) parser.parse(reader);
-            JSONObject responseBody = new JSONObject();
-            responseBody.put("message", getDatabaseQueryResult());
-            responseBody.put("input", event.toJSONString());
-
-            responseJson.put("statusCode", responseCode);
-            responseJson.put("headers", new JSONObject());
-            responseJson.put("body", responseBody.toString());
-
-        } catch (ParseException pex) {
-            responseJson.put("statusCode", "400");
-            responseJson.put("exception", pex);
-        }
-
-        logger.log(responseJson.toJSONString());
-        OutputStreamWriter writer = new OutputStreamWriter(output, "UTF-8");
-        writer.write(responseJson.toJSONString());
-        writer.close();
+        return responseJson;
     }
-
 
     public String getDatabaseQueryResult() {
         StringBuilder builder = new StringBuilder();
@@ -72,7 +50,7 @@ public class TestDB implements RequestStreamHandler {
         session.close();
         driver.close();
 
-        return String.valueOf( builder.toString());
+        return builder.toString();
 
     }
 }
