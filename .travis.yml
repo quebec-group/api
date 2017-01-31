@@ -7,6 +7,7 @@ deploy:
   bucket: "quebec-lambda-deployment"
   access_key_id: "AKIAI4YI5BWDLBVO63CQ"
   local-dir: "build/distributions"
+  skip_cleanup: true
   on:
     branch: master
   secret_access_key:
