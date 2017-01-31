@@ -1,16 +1,9 @@
 package uk.ac.cam.cl.quebec.api;
 
-import com.amazonaws.services.kms.AWSKMS;
-import com.amazonaws.services.kms.AWSKMSClientBuilder;
-import com.amazonaws.services.kms.model.DecryptRequest;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
-import com.amazonaws.util.Base64;
 import org.neo4j.driver.v1.*;
-
-import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 
 // uk.ac.cam.cl.quebec.api.TestDB::handleRequest
 public class TestDB implements RequestHandler<Object, String> {
