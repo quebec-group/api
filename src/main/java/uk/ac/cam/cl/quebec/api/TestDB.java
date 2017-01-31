@@ -33,7 +33,7 @@ public class TestDB implements RequestHandler<Object, String> {
 
         Session session = driver.session();
 
-        StatementResult result = session.run("MATCH (you {name:\"Callum\"})-[:FRIENDS_WITH]->(yourFriends) RETURN yourFriends");
+        StatementResult result = session.run("MATCH (you {name:\"Andy\"})-[:FRIENDS_WITH]->(yourFriends) RETURN yourFriends");
 
         while (result.hasNext()) {
             Record record = result.next();
