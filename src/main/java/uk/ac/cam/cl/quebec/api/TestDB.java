@@ -4,53 +4,104 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import org.json.simple.JSONObject;
-import org.neo4j.driver.v1.*;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
+
+import java.util.LinkedHashMap;
 
 // uk.ac.cam.cl.quebec.api.TestDB::handleRequest
 public class TestDB implements RequestHandler<JSONObject, JSONObject> {
 
-    private static String DB_PASS = System.getenv("grapheneDBPass");
+    private JSONParser parser = new JSONParser();
+    private DBManager db = new DBManager();
 
     @Override
     public JSONObject handleRequest(JSONObject input, Context context) {
-        LambdaLogger logger = context.getLogger();
-        logger.log("Loading Java Lambda handler simple\n");
-
-        JSONObject responseBody = new JSONObject();
-        responseBody.put("message", getDatabaseQueryResult());
+        if (context != null) {
+            LambdaLogger logger = context.getLogger();
+            logger.log("Loading Java Lambda handler simple\n");
+        }
 
         JSONObject responseJson = new JSONObject();
-        responseJson.put("statusCode", "200");
-        responseJson.put("headers", new JSONObject());
-        responseJson.put("body", responseBody.toString());
+
+        try {
+            responseJson.put("statusCode", "200");
+            responseJson.put("headers", new JSONObject());
+            responseJson.put("body", getResultForQuery(input));
+        } catch (ParseException e) {
+            if (context != null) {
+                context.getLogger().log(e.toString());
+            }
+
+            responseJson.put("statusCode", "500");
+            responseJson.put("body", "JSON parsing error");
+        }
+
 
         return responseJson;
     }
 
-    public String getDatabaseQueryResult() {
-        StringBuilder builder = new StringBuilder();
+    private String getUserID(JSONObject input) {
+        LinkedHashMap requestContext = (LinkedHashMap) input.get("requestContext");
+        LinkedHashMap identity = (LinkedHashMap) requestContext.get("identity");
+        return (String) identity.get("user");
+    }
 
-        //Test database connection
-        Driver driver = GraphDatabase.driver("bolt://hobby-dckpkbcijildgbkelginfool.dbs.graphenedb.com:24786",
-                AuthTokens.basic("quebec", DB_PASS));
+    private JSONObject getParams(JSONObject input) throws ParseException {
+        return (JSONObject) parser.parse((String) input.get("body"));
+    }
 
-        Session session = driver.session();
+    private String getRequest(JSONObject input) {
+        String path = (String) input.get("path");
+        return path.replace("/items/", "");
+    }
 
-        StatementResult result = session.run("MATCH (you {name:\"Callum\"})-[:FRIENDS_WITH]->(yourFriends) RETURN yourFriends");
 
-        while (result.hasNext()) {
-            Record record = result.next();
-            builder.append("Friend: ")
-                    .append(record.get("yourFriends").get("name").asString())
-                    .append(", ")
-                    .append(record.get("yourFriends").get("crsid").asString())
-                    .append(" \n");
+    private JSONObject getResultForQuery(JSONObject input) throws ParseException {
+        JSONObject params = getParams(input);
+        String request = getRequest(input);
+
+        switch (request) {
+            case "createUser":
+                return db.createUser(getUserID(input),
+                        (String) params.get("name"),
+                        (String) params.get("email"));
+            case "getFriends":
+                return db.getFriends(getUserID(input));
+            case "setPictureID":
+                return db.setPictureID(getUserID(input),
+                        (String) params.get("S3ID"));
+            case "setVideoID":
+                return db.setVideoID(getUserID(input),
+                        (String) params.get("S3ID"));
+            case "addFriend":
+                return db.addFriend(getUserID(input),
+                        (String) params.get("friendID"));
+            case "removeFriend":
+                return db.removeFriend(getUserID(input),
+                        (String) params.get("friendID"));
+            case "addFriendRequest":
+                return db.addFriendRequest(getUserID(input),
+                        (String) params.get("friendID"));
+            case "getPendingFriendRequests":
+                return db.getPendingFriendRequests(getUserID(input));
+            case "getSentFriendRequests":
+                return db.getSentFriendRequests(getUserID(input));
+            case "createEvent":
+                return db.createEvent((String) params.get("eventID"),
+                        (String) params.get("title"),
+                        getUserID(input));
+            case "addUserToEvent":
+                return db.addUserToEvent((String) params.get("eventID"),
+                        (String) params.get("userID"));
+            case "removeUserFromEvent":
+                return db.removeUserFromEvent((String) params.get("eventID"),
+                        getUserID(input));
+            default:
+                JSONObject error = new JSONObject();
+                error.put("status", "API not supported");
+                return error;
         }
-
-        session.close();
-        driver.close();
-
-        return builder.toString();
 
     }
 }
