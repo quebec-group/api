@@ -27,7 +27,7 @@ public class TestDB implements RequestHandler<JSONObject, JSONObject> {
         try {
             responseJson.put("statusCode", "200");
             responseJson.put("headers", new JSONObject());
-            responseJson.put("body", getResultForQuery(input));
+            responseJson.put("body", getResultForQuery(input).toString());
         } catch (ParseException e) {
             if (context != null) {
                 context.getLogger().log(e.toString());
