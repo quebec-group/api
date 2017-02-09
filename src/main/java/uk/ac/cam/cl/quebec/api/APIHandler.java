@@ -51,7 +51,7 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
     private String getUserID(JSONObject input) {
         LinkedHashMap requestContext = (LinkedHashMap) input.get("requestContext");
         LinkedHashMap identity = (LinkedHashMap) requestContext.get("identity");
-        return (String) identity.get("user");
+        return (String) identity.get("cognitoIdentityId");
     }
 
     private JSONObject getParams(JSONObject input) throws ParseException {

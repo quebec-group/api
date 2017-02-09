@@ -61,7 +61,7 @@ public class DBManager {
             friend.put("userID", record.get("friends").get("userID"));
             friend.put("name", record.get("friends").get("name"));
             friend.put("email", record.get("friends").get("email"));
-            friend.put("profileID", "TODO");
+            friend.put("profileID", record.get("pics").get("loc"));
             friends.add(friend);
         }
 
@@ -71,7 +71,9 @@ public class DBManager {
     }
 
     public JSONObject getFriends(String userID) {
-        StatementResult result = runQuery("MATCH (u:User {userID:'" + userID + "'})-[:FRIENDS]->(friends) RETURN friends");
+        StatementResult result = runQuery("MATCH (u:User {userID:'" + userID + "'})-[:FRIENDS]-(friends:User)\n" +
+                "MATCH (friends:User)-[:PROFILE_PIC]-(pics:Picture)\n" +
+                "RETURN friends, pics");
 
         JSONObject response = getFriendsFromResult(result);
         response.put("userID", userID);
@@ -92,7 +94,7 @@ public class DBManager {
     public JSONObject removeFriend(String userAID, String userBID) {
         StatementResult result = runQuery("MATCH (a:User {userID:'"+ userAID + "'}) " +
                 "MATCH (b:User {userID:'" + userBID + "'}) " +
-                "MATCH (a)-[r:FRIENDS]->(b)" +
+                "MATCH (a)-[r:FRIENDS]-(b) " +
                 "DELETE r");
 
 
@@ -112,7 +114,9 @@ public class DBManager {
     }
 
     public JSONObject getPendingFriendRequests(String userID) {
-        StatementResult result = runQuery("MATCH (friends) -[:REQUEST]->(u:User {userID:'" + userID + "'})RETURN friends");
+        StatementResult result = runQuery("MATCH (friends) -[:REQUEST]->(u:User {userID:'" + userID + "'}) " +
+                "MATCH (friends:User)-[:PROFILE_PIC]-(pics:Picture)\n" +
+                "RETURN friends, pics");
 
         JSONObject response = getFriendsFromResult(result);
         response.put("userID", userID);
@@ -120,7 +124,9 @@ public class DBManager {
     }
 
     public JSONObject getSentFriendRequests(String userID) {
-        StatementResult result = runQuery("MATCH (u:User {userID:'" + userID + "'})-[:REQUEST]->(friends) RETURN friends");
+        StatementResult result = runQuery("MATCH (u:User {userID:'" + userID + "'})-[:REQUEST]->(friends) " +
+                "MATCH (friends:User)-[:PROFILE_PIC]-(pics:Picture)\n" +
+                "RETURN friends, pics");
 
         JSONObject response = getFriendsFromResult(result);
         response.put("userID", userID);
