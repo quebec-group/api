@@ -35,6 +35,13 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
 
             responseJson.put("statusCode", "500");
             responseJson.put("body", "JSON parsing error");
+        } catch (ParamNotSpecifiedException e) {
+            if (context != null) {
+                context.getLogger().log(e.toString());
+            }
+
+            responseJson.put("statusCode", "500");
+            responseJson.put("body", "Incorrect paramters, requires: " + e.getMessage());
         }
 
 
@@ -56,45 +63,55 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
         return path.replace("/api/", "");
     }
 
+    private String getParam(JSONObject params, String key) throws ParamNotSpecifiedException {
+        String param = (String) params.get(key);
 
-    private JSONObject getResultForQuery(JSONObject input) throws ParseException {
+        if (param == null) {
+            throw new ParamNotSpecifiedException("Parameter " + key + " not found");
+        }
+
+        return param;
+    }
+
+
+    private JSONObject getResultForQuery(JSONObject input) throws ParseException, ParamNotSpecifiedException {
         JSONObject params = getParams(input);
         String request = getRequest(input);
 
         switch (request) {
             case "createUser":
                 return db.createUser(getUserID(input),
-                        (String) params.get("name"),
-                        (String) params.get("email"));
+                        getParam(params, "name"),
+                        getParam(params, "email"));
             case "getFriends":
                 return db.getFriends(getUserID(input));
             case "setPictureID":
                 return db.setPictureID(getUserID(input),
-                        (String) params.get("S3ID"));
+                        getParam(params, "S3ID"));
             case "setVideoID":
                 return db.setVideoID(getUserID(input),
-                        (String) params.get("S3ID"));
+                        getParam(params, "S3ID"));
             case "addFriend":
                 return db.addFriend(getUserID(input),
-                        (String) params.get("friendID"));
+                        getParam(params, "friendID"));
             case "removeFriend":
                 return db.removeFriend(getUserID(input),
-                        (String) params.get("friendID"));
+                        getParam(params, "friendID"));
             case "addFriendRequest":
                 return db.addFriendRequest(getUserID(input),
-                        (String) params.get("friendID"));
+                        getParam(params, "friendID"));
             case "getPendingFriendRequests":
                 return db.getPendingFriendRequests(getUserID(input));
             case "getSentFriendRequests":
                 return db.getSentFriendRequests(getUserID(input));
             case "createEvent":
-                return db.createEvent((String) params.get("title"),
+                return db.createEvent(getParam(params, "title"),
                         getUserID(input));
             case "addUserToEvent":
-                return db.addUserToEvent((String) params.get("eventID"),
-                        (String) params.get("userID"));
+                return db.addUserToEvent(getParam(params, "eventID"),
+                        getParam(params, "userID"));
             case "removeUserFromEvent":
-                return db.removeUserFromEvent((String) params.get("eventID"),
+                return db.removeUserFromEvent(getParam(params, "eventID"),
                         getUserID(input));
             default:
                 JSONObject error = new JSONObject();
