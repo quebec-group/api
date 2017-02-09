@@ -9,8 +9,8 @@ import org.json.simple.parser.ParseException;
 
 import java.util.LinkedHashMap;
 
-// uk.ac.cam.cl.quebec.api.TestDB::handleRequest
-public class TestDB implements RequestHandler<JSONObject, JSONObject> {
+// uk.ac.cam.cl.quebec.api.APIHandler::handleRequest
+public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
 
     private JSONParser parser = new JSONParser();
     private DBManager db = new DBManager();
@@ -53,7 +53,7 @@ public class TestDB implements RequestHandler<JSONObject, JSONObject> {
 
     private String getRequest(JSONObject input) {
         String path = (String) input.get("path");
-        return path.replace("/items/", "");
+        return path.replace("/api/", "");
     }
 
 
@@ -88,8 +88,7 @@ public class TestDB implements RequestHandler<JSONObject, JSONObject> {
             case "getSentFriendRequests":
                 return db.getSentFriendRequests(getUserID(input));
             case "createEvent":
-                return db.createEvent((String) params.get("eventID"),
-                        (String) params.get("title"),
+                return db.createEvent((String) params.get("title"),
                         getUserID(input));
             case "addUserToEvent":
                 return db.addUserToEvent((String) params.get("eventID"),
@@ -99,9 +98,18 @@ public class TestDB implements RequestHandler<JSONObject, JSONObject> {
                         getUserID(input));
             default:
                 JSONObject error = new JSONObject();
-                error.put("status", "API not supported");
+                error.put("status", "API '" + request + "' not supported");
                 return error;
         }
 
+    }
+
+    public static void main(String[] args) {
+        APIHandler test = new APIHandler();
+//        test.db.createUser("7", "Miteyan", "mmm@cam.ac.uk");
+//        test.db.createUser("8", "George", "ggg@cam.ac.uk");
+//        test.db.addFriend("7", "8");
+        test.db.createEvent("Event title", "7");
+//        test.db.addUserToEvent("17", "8");
     }
 }
