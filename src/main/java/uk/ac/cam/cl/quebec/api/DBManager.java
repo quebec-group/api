@@ -139,9 +139,14 @@ public class DBManager {
 
     }
 
-    public JSONObject createEvent(String eventID, String title, String creatorID) {
-        StatementResult result = runQuery("MATCH (u:User {userID:'" + creatorID + "'})" +
-                "CREATE (e:Event {title:'" + title + "', eventID:'" + eventID + "'})" +
+    public JSONObject createEvent(String title, String creatorID) {
+        String getUniqueID = "MERGE (id:UniqueId{name:'Event'})\n" +
+                "ON CREATE SET id.count = 1\n" +
+                "ON MATCH SET id.count = id.count + 1\n" +
+                "WITH id.count AS uid ";
+
+        StatementResult result = runQuery(getUniqueID + "MATCH (u:User {userID:'" + creatorID + "'})" +
+                "CREATE (e:Event {title:'" + title + "', eventID:uid})" +
                 "CREATE (v:Video)" +
                 "CREATE (u)-[:CREATED]->(e)," +
                 "(u)-[:ATTENDED]->(e)," +
