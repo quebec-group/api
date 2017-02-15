@@ -41,7 +41,7 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
             }
 
             responseJson.put("statusCode", "500");
-            responseJson.put("body", "Incorrect paramters, requires: " + e.getMessage());
+            responseJson.put("body", "Incorrect paramters: " + e.getMessage());
         }
 
 
@@ -106,6 +106,8 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
                 return db.getSentFriendRequests(getUserID(input));
             case "createEvent":
                 return db.createEvent(getParam(params, "title"),
+                        getParam(params, "location"),
+                        getParam(params, "time"),
                         getUserID(input));
             case "addUserToEvent":
                 return db.addUserToEvent(getParam(params, "eventID"),

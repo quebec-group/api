@@ -59,25 +59,6 @@ public class DBManager {
         return response;
     }
 
-    private JSONObject getFriendsFromResult(StatementResult result) {
-        JSONObject response = new JSONObject();
-        JSONArray friends = new JSONArray();
-
-        while (result.hasNext()) {
-            Record record = result.next();
-            JSONObject friend = new JSONObject();
-            friend.put("userID", record.get("friends").get("userID"));
-            friend.put("name", record.get("friends").get("name"));
-            friend.put("email", record.get("friends").get("email"));
-            friend.put("profileID", record.get("pics").get("S3ID"));
-            friends.add(friend);
-        }
-
-        response.put("friends", friends);
-
-        return response;
-    }
-
     public JSONObject getFriends(String userID) {
         Statement statement = new Statement(
                 "MATCH (u:User {userID: {userID}})-[:FRIENDS]-(friends:User) " +
@@ -171,7 +152,7 @@ public class DBManager {
 
     }
 
-    public JSONObject createEvent(String title, String creatorID) {
+    public JSONObject createEvent(String title, String creatorID, String location, String time) {
         Statement statement = new Statement(
                 // Get UUID
                 "MERGE (id:UniqueId{name:'Event'}) " +
@@ -181,12 +162,15 @@ public class DBManager {
 
                 // Create nodes
                 "MATCH (u:User {userID: {creatorID}}) " +
-                "CREATE (e:Event {title: {title}, eventID:uid}) " +
+                "CREATE (e:Event {title: {title}, eventID: uid, location: {location}, time: {time}}) " +
                 "CREATE (v:Video) " +
                 "CREATE (u)-[:CREATED]->(e), " +
                 "(u)-[:ATTENDED]->(e), " +
                 "(e)-[:VIDEO]->(v)",
-                Values.parameters("title", title, "creatorID", creatorID));
+                Values.parameters("title", title,
+                        "creatorID", creatorID,
+                        "location", location,
+                        "time", time));
         StatementResult result = runQuery(statement);
 
         JSONObject response = new JSONObject();
@@ -227,5 +211,24 @@ public class DBManager {
         StatementResult result = session.run(query);
         session.close();
         return result;
+    }
+
+    private JSONObject getFriendsFromResult(StatementResult result) {
+        JSONObject response = new JSONObject();
+        JSONArray friends = new JSONArray();
+
+        while (result.hasNext()) {
+            Record record = result.next();
+            JSONObject friend = new JSONObject();
+            friend.put("userID", record.get("friends").get("userID"));
+            friend.put("name", record.get("friends").get("name"));
+            friend.put("email", record.get("friends").get("email"));
+            friend.put("profileID", record.get("pics").get("S3ID"));
+            friends.add(friend);
+        }
+
+        response.put("friends", friends);
+
+        return response;
     }
 }
