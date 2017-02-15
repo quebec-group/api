@@ -1,7 +1,6 @@
 package uk.ac.cam.cl.quebec.api;
 
 import com.amazonaws.services.lambda.runtime.Context;
-import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -17,31 +16,28 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
 
     @Override
     public JSONObject handleRequest(JSONObject input, Context context) {
-        if (context != null) {
-            LambdaLogger logger = context.getLogger();
-            logger.log("Loading Java Lambda handler simple\n");
-        }
 
         JSONObject responseJson = new JSONObject();
+        responseJson.put("statusCode", "200");
+        responseJson.put("headers", new JSONObject());
+
+        JSONObject bodyJSON = new JSONObject();
 
         try {
-            responseJson.put("statusCode", "200");
-            responseJson.put("headers", new JSONObject());
-            responseJson.put("body", getResultForQuery(input).toString());
+            bodyJSON = getResultForQuery(input);
         } catch (ParseException e) {
             if (context != null) {
                 context.getLogger().log(e.toString());
             }
 
-            responseJson.put("statusCode", "500");
-            responseJson.put("body", "JSON parsing error");
+            bodyJSON = errorBody("JSON parsing error" + e.getMessage());
         } catch (ParamNotSpecifiedException e) {
             if (context != null) {
                 context.getLogger().log(e.toString());
             }
-
-            responseJson.put("statusCode", "500");
-            responseJson.put("body", "Incorrect paramters: " + e.getMessage());
+            bodyJSON = errorBody(e.getMessage());
+        } finally {
+            responseJson.put("body", bodyJSON.toString());
         }
 
 
@@ -115,20 +111,20 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
             case "removeUserFromEvent":
                 return db.removeUserFromEvent(getParam(params, "eventID"),
                         getUserID(input));
+            case "getEvents":
+                return db.getEvents(getUserID(input));
             default:
-                JSONObject error = new JSONObject();
-                error.put("status", "API '" + request + "' not supported");
-                return error;
+                return errorBody("API '" + request + "' not supported");
         }
 
     }
 
-    public static void main(String[] args) {
-        APIHandler test = new APIHandler();
-//        test.db.createUser("7", "Miteyan", "mmm@cam.ac.uk");
-//        test.db.createUser("8", "George", "ggg@cam.ac.uk");
-//        test.db.addFriend("7", "8");
-        test.db.createEvent("Event title", "7");
-//        test.db.addUserToEvent("17", "8");
+    private JSONObject errorBody(String message) {
+        JSONObject error = new JSONObject();
+        error.put("status", "failure");
+        error.put("error", message);
+        return error;
     }
+
+
 }
