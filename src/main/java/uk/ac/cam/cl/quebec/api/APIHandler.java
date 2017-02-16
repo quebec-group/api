@@ -5,6 +5,7 @@ import com.amazonaws.services.lambda.runtime.RequestHandler;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
+import org.neo4j.driver.v1.exceptions.ClientException;
 
 import java.util.LinkedHashMap;
 
@@ -12,7 +13,7 @@ import java.util.LinkedHashMap;
 public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
 
     private JSONParser parser = new JSONParser();
-    private DBManager db = new DBManager();
+    protected DBManager db = new DBManager();
 
     @Override
     public JSONObject handleRequest(JSONObject input, Context context) {
@@ -74,49 +75,52 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
         JSONObject params = getParams(input);
         String request = getRequest(input);
 
-        switch (request) {
-            case "createUser":
-                return db.createUser(getUserID(input),
-                        getParam(params, "name"),
-                        getParam(params, "email"));
-            case "getFriends":
-                return db.getFriends(getUserID(input));
-            case "setPictureID":
-                return db.setPictureID(getUserID(input),
-                        getParam(params, "S3ID"));
-            case "setVideoID":
-                return db.setVideoID(getUserID(input),
-                        getParam(params, "S3ID"));
-            case "addFriend":
-                return db.addFriend(getUserID(input),
-                        getParam(params, "friendID"));
-            case "removeFriend":
-                return db.removeFriend(getUserID(input),
-                        getParam(params, "friendID"));
-            case "addFriendRequest":
-                return db.addFriendRequest(getUserID(input),
-                        getParam(params, "friendID"));
-            case "getPendingFriendRequests":
-                return db.getPendingFriendRequests(getUserID(input));
-            case "getSentFriendRequests":
-                return db.getSentFriendRequests(getUserID(input));
-            case "createEvent":
-                return db.createEvent(getParam(params, "title"),
-                        getParam(params, "location"),
-                        getParam(params, "time"),
-                        getUserID(input));
-            case "addUserToEvent":
-                return db.addUserToEvent(getParam(params, "eventID"),
-                        getParam(params, "userID"));
-            case "removeUserFromEvent":
-                return db.removeUserFromEvent(getParam(params, "eventID"),
-                        getUserID(input));
-            case "getEvents":
-                return db.getEvents(getUserID(input));
-            default:
-                return errorBody("API '" + request + "' not supported");
+        try {
+            switch (request) {
+                case "createUser":
+                    return db.createUser(getUserID(input),
+                            getParam(params, "name"),
+                            getParam(params, "email"));
+                case "getFriends":
+                    return db.getFriends(getUserID(input));
+                case "setPictureID":
+                    return db.setPictureID(getUserID(input),
+                            getParam(params, "S3ID"));
+                case "setVideoID":
+                    return db.setVideoID(getUserID(input),
+                            getParam(params, "S3ID"));
+                case "addFriend":
+                    return db.addFriend(getUserID(input),
+                            getParam(params, "friendID"));
+                case "removeFriend":
+                    return db.removeFriend(getUserID(input),
+                            getParam(params, "friendID"));
+                case "addFriendRequest":
+                    return db.addFriendRequest(getUserID(input),
+                            getParam(params, "friendID"));
+                case "getPendingFriendRequests":
+                    return db.getPendingFriendRequests(getUserID(input));
+                case "getSentFriendRequests":
+                    return db.getSentFriendRequests(getUserID(input));
+                case "createEvent":
+                    return db.createEvent(getParam(params, "title"),
+                            getParam(params, "location"),
+                            getParam(params, "time"),
+                            getUserID(input));
+                case "addUserToEvent":
+                    return db.addUserToEvent(getParam(params, "eventID"),
+                            getParam(params, "userID"));
+                case "removeUserFromEvent":
+                    return db.removeUserFromEvent(getParam(params, "eventID"),
+                            getUserID(input));
+                case "getEvents":
+                    return db.getEvents(getUserID(input));
+                default:
+                    return errorBody("API '" + request + "' not supported");
+            }
+        } catch (ClientException e) {
+            return errorBody(e.getMessage());
         }
-
     }
 
     private JSONObject errorBody(String message) {
