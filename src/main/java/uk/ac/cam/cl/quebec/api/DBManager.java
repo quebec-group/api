@@ -195,7 +195,8 @@ public class DBManager {
     public JSONObject getEvents(String userID) {
         Statement statement = new Statement(
                 "MATCH (caller:User {userID: {userID}})-[*1..2]-(events:Event) " +
-                "RETURN events",
+                "MATCH (events)-[:ATTENDED]-(atEvent:User) " +
+                "RETURN events, collect(distinct atEvent) AS members ",
                 Values.parameters("userID", userID));
         StatementResult result = runQuery(statement);
 
@@ -220,7 +221,18 @@ public class DBManager {
             event.put("eventID", record.get("events").get("eventID"));
             event.put("title", record.get("events").get("title"));
             event.put("location", record.get("events").get("location"));
-            event.put("videoID", record.get("events").get("videoID"));
+            event.put("videoID", record.get("events").get("videoID", ""));
+
+            JSONArray membersJson = new JSONArray();
+            Value members  = record.get("members");
+
+            for (int i = 0; i < members.size(); i++) {
+                Value member = members.get(i);
+                membersJson.add(getJsonFromFriend(member));
+            }
+
+            event.put("members", membersJson);
+
             events.add(event);
         }
 
@@ -236,12 +248,7 @@ public class DBManager {
 
         while (result.hasNext()) {
             Record record = result.next();
-            JSONObject friend = new JSONObject();
-            friend.put("userID", record.get("friends").get("userID"));
-            friend.put("name", record.get("friends").get("name"));
-            friend.put("email", record.get("friends").get("email"));
-            friend.put("profileID", record.get("friends").get("profilePicID"));
-            friends.add(friend);
+            friends.add(getJsonFromFriend(record.get("friends")));
         }
 
         response.put("friends", friends);
@@ -249,4 +256,16 @@ public class DBManager {
 
         return response;
     }
+
+    private JSONObject getJsonFromFriend(Value value) {
+        JSONObject friend = new JSONObject();
+
+        friend.put("userID", value.get("userID"));
+        friend.put("name", value.get("name"));
+        friend.put("email", value.get("email"));
+        friend.put("profileID", value.get("profilePicID", ""));
+
+        return friend;
+    }
+
 }
