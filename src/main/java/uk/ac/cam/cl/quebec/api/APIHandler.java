@@ -19,26 +19,18 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
     public JSONObject handleRequest(JSONObject input, Context context) {
 
         JSONObject responseJson = new JSONObject();
-        responseJson.put("statusCode", "200");
         responseJson.put("headers", new JSONObject());
 
-        JSONObject bodyJSON = new JSONObject();
-
         try {
-            bodyJSON = getResultForQuery(input);
-        } catch (ParseException e) {
+            responseJson.put("body", getResultForQuery(input));
+            responseJson.put("statusCode", "200");
+        } catch (ParseException|APIException|ClientException e) {
             if (context != null) {
                 context.getLogger().log(e.toString());
             }
 
-            bodyJSON = errorBody("JSON parsing error" + e.getMessage());
-        } catch (ParamNotSpecifiedException e) {
-            if (context != null) {
-                context.getLogger().log(e.toString());
-            }
-            bodyJSON = errorBody(e.getMessage());
-        } finally {
-            responseJson.put("body", bodyJSON.toString());
+            responseJson.put("statusCode", "400");
+            responseJson.put("body", errorBody(e.getMessage()).toString());
         }
 
 
@@ -60,73 +52,72 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
         return path.replace("/api/", "");
     }
 
-    private String getParam(JSONObject params, String key) throws ParamNotSpecifiedException {
+    private String getParam(JSONObject params, String key) throws APIException {
         String param = (String) params.get(key);
 
         if (param == null) {
-            throw new ParamNotSpecifiedException("Parameter " + key + " not found");
+            throw new APIException("Parameter '" + key + "' not found");
         }
 
         return param;
     }
 
 
-    private JSONObject getResultForQuery(JSONObject input) throws ParseException, ParamNotSpecifiedException {
+    private JSONObject getResultForQuery(JSONObject input) throws ParseException, APIException, ClientException {
         JSONObject params = getParams(input);
         String request = getRequest(input);
 
-        try {
-            switch (request) {
-                case "createUser":
-                    return db.createUser(getUserID(input),
-                            getParam(params, "name"),
-                            getParam(params, "email"));
-                case "getFriends":
-                    return db.getFriends(getUserID(input));
-                case "setPictureID":
-                    return db.setPictureID(getUserID(input),
-                            getParam(params, "S3ID"));
-                case "setVideoID":
-                    return db.setVideoID(getUserID(input),
-                            getParam(params, "S3ID"));
-                case "addFriend":
-                    return db.addFriend(getUserID(input),
-                            getParam(params, "friendID"));
-                case "removeFriend":
-                    return db.removeFriend(getUserID(input),
-                            getParam(params, "friendID"));
-                case "addFriendRequest":
-                    return db.addFriendRequest(getUserID(input),
-                            getParam(params, "friendID"));
-                case "getPendingFriendRequests":
-                    return db.getPendingFriendRequests(getUserID(input));
-                case "getSentFriendRequests":
-                    return db.getSentFriendRequests(getUserID(input));
-                case "createEvent":
-                    return db.createEvent(getParam(params, "title"),
-                            getParam(params, "location"),
-                            getParam(params, "time"),
-                            getUserID(input));
-                case "addUserToEvent":
-                    return db.addUserToEvent(getParam(params, "eventID"),
-                            getParam(params, "userID"));
-                case "removeUserFromEvent":
-                    return db.removeUserFromEvent(getParam(params, "eventID"),
-                            getUserID(input));
-                case "getEvents":
-                    return db.getEvents(getUserID(input));
-                default:
-                    return errorBody("API '" + request + "' not supported");
-            }
-        } catch (ClientException e) {
-            return errorBody(e.getMessage());
+        switch (request) {
+            case "createUser":
+                return db.createUser(getUserID(input),
+                        getParam(params, "name"),
+                        getParam(params, "email"));
+            case "getFriends":
+                return db.getFriends(getUserID(input));
+            case "setProfilePicture":
+                return db.setProfilePicture(getUserID(input),
+                        getParam(params, "S3ID"));
+            case "addVideoToEvent":
+                return db.addVideoToEvent(getUserID(input),
+                        getParam(params, "S3ID"));
+            case "addFriend":
+                return db.addFriend(getUserID(input),
+                        getParam(params, "friendID"));
+            case "removeFriend":
+                return db.removeFriend(getUserID(input),
+                        getParam(params, "friendID"));
+            case "addFriendRequest":
+                return db.addFriendRequest(getUserID(input),
+                        getParam(params, "friendID"));
+            case "getPendingFriendRequests":
+                return db.getPendingFriendRequests(getUserID(input));
+            case "getSentFriendRequests":
+                return db.getSentFriendRequests(getUserID(input));
+            case "createEvent":
+                return db.createEvent(getParam(params, "title"),
+                        getParam(params, "location"),
+                        getParam(params, "time"),
+                        getUserID(input));
+            case "addUserToEvent":
+                return db.addUserToEvent(getParam(params, "eventID"),
+                        getParam(params, "friendID"));
+            case "removeUserFromEvent":
+                return db.removeUserFromEvent(getParam(params, "eventID"),
+                        getUserID(input));
+            case "getEvents":
+                return db.getEvents(getUserID(input));
+            case "likeEvent":
+                return db.likeEvent(getUserID(input), getParam(params, "eventID"));
+            case "unlikeEvent":
+                return db.likeEvent(getUserID(input), getParam(params, "eventID"));
+            default:
+                throw new APIException("API '" + request + "' not supported");
         }
     }
 
     private JSONObject errorBody(String message) {
         JSONObject error = new JSONObject();
-        error.put("status", "failure");
-        error.put("error", message);
+        error.put("errorMessage", message);
         return error;
     }
 

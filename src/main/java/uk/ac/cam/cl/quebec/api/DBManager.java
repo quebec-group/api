@@ -2,6 +2,7 @@ package uk.ac.cam.cl.quebec.api;
 
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
+import org.neo4j.driver.internal.value.RelationshipValue;
 import org.neo4j.driver.v1.*;
 
 public class DBManager {
@@ -24,35 +25,30 @@ public class DBManager {
                 "CREATE (u:User {name: {name}, email: {email}, userID: {ID}}) ",
                 Values.parameters("name", name, "email", email, "ID", ID));
         StatementResult result = runQuery(statement);
-        JSONObject response = new JSONObject();
-        response.put("status", "success");
-        return response;
+
+        return successJson();
     }
 
-    public JSONObject setPictureID(String userID, String S3ID) {
+    public JSONObject setProfilePicture(String userID, String S3ID) {
         Statement statement = new Statement(
                 "MATCH (u:User {userID: {userID}}) " +
                 "SET u.profilePicID = {S3ID} ",
                 Values.parameters("userID", userID, "S3ID", S3ID));
         StatementResult result = runQuery(statement);
 
-
-        JSONObject response = new JSONObject();
-        response.put("status", "success");
-        return response;
+        return successJson();
     }
 
-    public JSONObject setVideoID(String eventID, String S3ID) {
+    public JSONObject addVideoToEvent(String eventID, String S3ID) {
         Statement statement = new Statement(
                 "MATCH (u:Event {eventID: {eventID}}) " +
-                "SET u.videoID = {S3ID} ",
+                "CREATE (v:Video {S3ID: {S3ID}})" +
+                "CREATE (u)-[:VIDEO]->(v)",
                 Values.parameters("eventID", Integer.parseInt(eventID), "S3ID", S3ID));
 
         StatementResult result = runQuery(statement);
 
-        JSONObject response = new JSONObject();
-        response.put("status", "success");
-        return response;
+        return successJson();
     }
 
     public JSONObject getFriends(String userID) {
@@ -73,10 +69,7 @@ public class DBManager {
                 Values.parameters("userAID", userAID, "userBID", userBID));
         StatementResult result = runQuery(statement);
 
-
-        JSONObject response = new JSONObject();
-        response.put("status", "success");
-        return response;
+        return successJson();
     }
 
     public JSONObject removeFriend(String userAID, String userBID) {
@@ -88,10 +81,7 @@ public class DBManager {
                 Values.parameters("userAID", userAID, "userBID", userBID));
         StatementResult result = runQuery(statement);
 
-
-        JSONObject response = new JSONObject();
-        response.put("status", "success");
-        return response;
+        return successJson();
     }
 
     public JSONObject addFriendRequest(String userAID, String userBID) {
@@ -102,9 +92,7 @@ public class DBManager {
                 Values.parameters("userAID", userAID, "userBID", userBID));
         StatementResult result = runQuery(statement);
 
-        JSONObject response = new JSONObject();
-        response.put("status", "success");
-        return response;
+        return successJson();
     }
 
     public JSONObject getPendingFriendRequests(String userID) {
@@ -135,10 +123,7 @@ public class DBManager {
                 Values.parameters("userAID", userAID, "userBID", userBID));
         StatementResult result = runQuery(statement);
 
-        JSONObject response = new JSONObject();
-        response.put("status", "success");
-        return response;
-
+        return successJson();
     }
 
     public JSONObject createEvent(String title, String location, String time, String creatorID) {
@@ -160,9 +145,7 @@ public class DBManager {
                         "time", time));
         StatementResult result = runQuery(statement);
 
-        JSONObject response = new JSONObject();
-        response.put("status", "success");
-        return response;
+        return successJson();
     }
 
     public JSONObject addUserToEvent(String eventID, String userID) {
@@ -173,9 +156,7 @@ public class DBManager {
                 Values.parameters("eventID", Integer.parseInt(eventID), "userID", userID));
         StatementResult result = runQuery(statement);
 
-        JSONObject response = new JSONObject();
-        response.put("status", "success");
-        return response;
+        return successJson();
     }
 
     public JSONObject removeUserFromEvent(String eventID, String userID) {
@@ -187,20 +168,45 @@ public class DBManager {
                 Values.parameters("eventID", Integer.parseInt(eventID), "userID", userID));
         StatementResult result = runQuery(statement);
 
-        JSONObject response = new JSONObject();
-        response.put("status", "success");
-        return response;
+        return successJson();
     }
 
     public JSONObject getEvents(String userID) {
         Statement statement = new Statement(
                 "MATCH (caller:User {userID: {userID}})-[*1..2]-(events:Event) " +
                 "MATCH (events)-[:ATTENDED]-(atEvent:User) " +
-                "RETURN events, collect(distinct atEvent) AS members ",
+                "MATCH (events)-[:VIDEO]-(eventVideos:Video) " +
+                "OPTIONAL MATCH (atEvent)-[l:LIKES]-(events) " +
+                "RETURN events, collect(distinct {member: atEvent, likes: l}) AS members, collect(distinct eventVideos) AS videos",
                 Values.parameters("userID", userID));
         StatementResult result = runQuery(statement);
 
         return getEventsFromResults(result);
+    }
+
+    public JSONObject likeEvent(String userID, String eventID) {
+        Statement statement = new Statement(
+                "MATCH (u:User {userID: {userID}}) " +
+                "MATCH (e:Event {eventID: {eventID}}) " +
+                "CREATE (u)-[:LIKES]->(e) ",
+                Values.parameters("eventID", Integer.parseInt(eventID), "userID", userID));
+
+        StatementResult result = runQuery(statement);
+
+        return successJson();
+    }
+
+    public JSONObject unlikeEvent(String userID, String eventID) {
+        Statement statement = new Statement(
+                "MATCH (u:User {userID: {userID}}) " +
+                "MATCH (e:Event {eventID: {eventID}}) " +
+                "MATCH (u)-[r:LIKES]->(e) " +
+                "DELETE r",
+                Values.parameters("eventID", Integer.parseInt(eventID), "userID", userID));
+
+        StatementResult result = runQuery(statement);
+
+        return successJson();
     }
 
 
@@ -212,7 +218,7 @@ public class DBManager {
     }
 
     private JSONObject getEventsFromResults(StatementResult result) {
-        JSONObject response = new JSONObject();
+        JSONObject response = successJson();
         JSONArray events = new JSONArray();
 
         while (result.hasNext()) {
@@ -221,14 +227,33 @@ public class DBManager {
             event.put("eventID", record.get("events").get("eventID"));
             event.put("title", record.get("events").get("title"));
             event.put("location", record.get("events").get("location"));
-            event.put("videoID", record.get("events").get("videoID", ""));
 
+            // Videos
+            JSONArray videosJson = new JSONArray();
+            Value videos  = record.get("videos");
+
+            for (int i = 0; i < videos.size(); i++) {
+                Value video = videos.get(i);
+                videosJson.add(getJsonFromVideo(video));
+            }
+
+            event.put("videos", videosJson);
+
+            // Friends
             JSONArray membersJson = new JSONArray();
             Value members  = record.get("members");
 
             for (int i = 0; i < members.size(); i++) {
                 Value member = members.get(i);
-                membersJson.add(getJsonFromFriend(member));
+                JSONObject friend = new JSONObject();
+
+                friend.put("userID", member.get("member").get("userID"));
+                friend.put("name", member.get("member").get("name"));
+                friend.put("email", member.get("member").get("email"));
+                friend.put("profileID", member.get("member").get("profilePicID", ""));
+                friend.put("likesEvent", relationshipExists(member.get("likes")));
+
+                membersJson.add(friend);
             }
 
             event.put("members", membersJson);
@@ -237,35 +262,45 @@ public class DBManager {
         }
 
         response.put("events", events);
-        response.put("status", "success");
 
         return response;
     }
 
     private JSONObject getFriendsFromResult(StatementResult result) {
-        JSONObject response = new JSONObject();
+        JSONObject response = successJson();
         JSONArray friends = new JSONArray();
 
         while (result.hasNext()) {
             Record record = result.next();
-            friends.add(getJsonFromFriend(record.get("friends")));
+            Value friendValue = record.get("friends");
+            JSONObject friend = new JSONObject();
+
+            friend.put("userID", friendValue.get("userID"));
+            friend.put("name", friendValue.get("name"));
+            friend.put("email", friendValue.get("email"));
+            friend.put("profileID", friendValue.get("profilePicID", ""));
+
+            friends.add(friend);
         }
 
         response.put("friends", friends);
-        response.put("status", "success");
 
         return response;
     }
 
-    private JSONObject getJsonFromFriend(Value value) {
-        JSONObject friend = new JSONObject();
+    private JSONObject getJsonFromVideo(Value value) {
+        JSONObject video = new JSONObject();
 
-        friend.put("userID", value.get("userID"));
-        friend.put("name", value.get("name"));
-        friend.put("email", value.get("email"));
-        friend.put("profileID", value.get("profilePicID", ""));
+        video.put("videoID", value.get("S3ID"));
 
-        return friend;
+        return video;
     }
 
+    private Boolean relationshipExists(Value value) {
+        return value instanceof RelationshipValue;
+    }
+
+    private JSONObject successJson() {
+        return new JSONObject();
+    }
 }
