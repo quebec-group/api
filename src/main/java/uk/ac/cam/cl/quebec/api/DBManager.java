@@ -22,7 +22,7 @@ public class DBManager {
 
     public JSONObject createUser(String ID, String name, String email) {
         Statement statement = new Statement(
-                "CREATE (u:User {name: {name}, email: {email}, userID: {ID}}) ",
+                "MERGE (u:User {name: {name}, email: {email}, userID: {ID}}) ",
                 Values.parameters("name", name, "email", email, "ID", ID));
         StatementResult result = runQuery(statement);
 
@@ -42,7 +42,7 @@ public class DBManager {
     public JSONObject addVideoToEvent(String eventID, String S3ID) {
         Statement statement = new Statement(
                 "MATCH (u:Event {eventID: {eventID}}) " +
-                "CREATE (v:Video {S3ID: {S3ID}})" +
+                "MERGE (v:Video {S3ID: {S3ID}})" +
                 "CREATE (u)-[:VIDEO]->(v)",
                 Values.parameters("eventID", Integer.parseInt(eventID), "S3ID", S3ID));
 
@@ -51,21 +51,35 @@ public class DBManager {
         return successJson();
     }
 
-    public JSONObject getFriends(String userID) {
+    private StatementResult friendsQuery(String userID) {
         Statement statement = new Statement(
                 "MATCH (u:User {userID: {userID}})-[:FRIENDS]-(friends:User) " +
                 "RETURN friends",
                 Values.parameters("userID", userID));
-        StatementResult result = runQuery(statement);
+        return runQuery(statement);
+    }
 
-        return getFriendsFromResult(result);
+    public JSONObject getFriendsForApp(String userID) {
+        return getFriendsFromResult(friendsQuery(userID));
+    }
+
+    public JSONArray getFriendsIDList(String userID) {
+        StatementResult result = friendsQuery(userID);
+
+        JSONArray friends = new JSONArray();
+
+        while (result.hasNext()) {
+            friends.add(result.next().get("friends").get("userID"));
+        }
+
+        return friends;
     }
 
     public JSONObject addFriend(String userAID, String userBID) {
         Statement statement = new Statement(
                 "MATCH (a:User {userID: {userAID}}) " +
                 "MATCH (b:User {userID: {userBID}}) " +
-                "CREATE (a)-[:FRIENDS]->(b)",
+                "CREATE UNIQUE (a)-[:FRIENDS]->(b)",
                 Values.parameters("userAID", userAID, "userBID", userBID));
         StatementResult result = runQuery(statement);
 
@@ -88,7 +102,7 @@ public class DBManager {
         Statement statement = new Statement(
                 "MATCH (a:User {userID: {userAID}}) " +
                 "MATCH (b:User {userID: {userBID}}) " +
-                "CREATE (a)-[:REQUEST]->(b)",
+                "CREATE UNIQUE (a)-[:REQUEST]->(b)",
                 Values.parameters("userAID", userAID, "userBID", userBID));
         StatementResult result = runQuery(statement);
 
@@ -152,7 +166,7 @@ public class DBManager {
         Statement statement = new Statement(
                 "MATCH (u:User {userID: {userID}}) " +
                 "MATCH (e:Event {eventID: {eventID}}) " +
-                "CREATE (u)-[:ATTENDED]->(e)",
+                "CREATE UNIQUE (u)-[:ATTENDED]->(e)",
                 Values.parameters("eventID", Integer.parseInt(eventID), "userID", userID));
         StatementResult result = runQuery(statement);
 
@@ -188,7 +202,7 @@ public class DBManager {
         Statement statement = new Statement(
                 "MATCH (u:User {userID: {userID}}) " +
                 "MATCH (e:Event {eventID: {eventID}}) " +
-                "CREATE (u)-[:LIKES]->(e) ",
+                "CREATE UNIQUE (u)-[:LIKES]->(e) ",
                 Values.parameters("eventID", Integer.parseInt(eventID), "userID", userID));
 
         StatementResult result = runQuery(statement);

@@ -14,22 +14,30 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
 
     private JSONParser parser = new JSONParser();
     protected DBManager db = new DBManager();
+    private SQSWrapper sqs = new SQSWrapper();
 
     @Override
     public JSONObject handleRequest(JSONObject input, Context context) {
 
-        JSONObject responseJson = new JSONObject();
-        responseJson.put("headers", new JSONObject());
+        JSONObject responseJson = null;
 
         try {
-            responseJson.put("body", getResultForQuery(input));
+            responseJson = new JSONObject();
             responseJson.put("statusCode", "200");
+            responseJson.put("headers", new JSONObject());
+            responseJson.put("body", getResultForQuery(input).toString());
+
+            if (context != null) {
+                context.getLogger().log(responseJson.toString());
+            }
         } catch (ParseException|APIException|ClientException e) {
             if (context != null) {
                 context.getLogger().log(e.toString());
             }
 
+            responseJson = new JSONObject();
             responseJson.put("statusCode", "400");
+            responseJson.put("headers", new JSONObject());
             responseJson.put("body", errorBody(e.getMessage()).toString());
         }
 
@@ -73,13 +81,23 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
                         getParam(params, "name"),
                         getParam(params, "email"));
             case "getFriends":
-                return db.getFriends(getUserID(input));
-            case "setProfilePicture":
-                return db.setProfilePicture(getUserID(input),
+                return db.getFriendsForApp(getUserID(input));
+            case "setProfilePicture": {
+                String S3ID = getParam(params, "S3ID");
+                String userID = getUserID(input);
+
+                sqs.sendTrainingVideo(userID, S3ID);
+                return db.setProfilePicture(userID, S3ID);
+            }
+            case "addVideoToEvent": {
+                String S3ID = getParam(params, "S3ID");
+                String eventID = getParam(params, "eventID");
+                String userID = getUserID(input);
+
+                sqs.sendEventVideo(S3ID, eventID, db.getFriendsIDList(userID));
+                return db.addVideoToEvent(getParam(params, "eventID"),
                         getParam(params, "S3ID"));
-            case "addVideoToEvent":
-                return db.addVideoToEvent(getUserID(input),
-                        getParam(params, "S3ID"));
+            }
             case "addFriend":
                 return db.addFriend(getUserID(input),
                         getParam(params, "friendID"));
@@ -120,6 +138,4 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
         error.put("errorMessage", message);
         return error;
     }
-
-
 }
