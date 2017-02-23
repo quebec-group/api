@@ -5,6 +5,8 @@ import org.json.simple.JSONObject;
 import org.neo4j.driver.internal.value.RelationshipValue;
 import org.neo4j.driver.v1.*;
 
+import java.util.List;
+
 public class DBManager {
     private static String DB_URL = System.getenv("dbUrl");
     private static String DB_USER = System.getenv("dbUser");
@@ -118,6 +120,18 @@ public class DBManager {
                 "MATCH (e:Event {eventID: {eventID}}) " +
                 "CREATE UNIQUE (u)-[:ATTENDED]->(e)",
                 Values.parameters("eventID", Integer.parseInt(eventID), "userID", userID));
+        StatementResult result = runQuery(statement);
+
+        return successJson();
+    }
+
+    public JSONObject addUsersToEvent(String eventID, List<String> members) {
+        Statement statement = new Statement(
+                "MATCH (e:Event {eventID: {eventID}}) " +
+                "MATCH (u:User) " +
+                "WHERE u.userID IN {members} " +
+                "CREATE UNIQUE (u)-[:ATTENDED]->(e)",
+                Values.parameters("eventID", Integer.parseInt(eventID), "members", members));
         StatementResult result = runQuery(statement);
 
         return successJson();
