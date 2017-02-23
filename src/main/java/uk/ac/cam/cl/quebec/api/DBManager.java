@@ -51,88 +51,38 @@ public class DBManager {
         return successJson();
     }
 
-    private StatementResult friendsQuery(String userID) {
+    public JSONArray getRelatedUsers(String userID) {
         Statement statement = new Statement(
-                "MATCH (u:User {userID: {userID}})-[:FRIENDS]-(friends:User) " +
-                "RETURN friends",
+                "MATCH (u:User {userID: {userID}})-[:FOLLOW]-(users:User) " +
+                "RETURN users",
                 Values.parameters("userID", userID));
-        return runQuery(statement);
-    }
+        StatementResult result = runQuery(statement);
 
-    public JSONObject getFriendsForApp(String userID) {
-        return getFriendsFromResult(friendsQuery(userID));
-    }
-
-    public JSONArray getFriendsIDList(String userID) {
-        StatementResult result = friendsQuery(userID);
-
-        JSONArray friends = new JSONArray();
+        JSONArray users = new JSONArray();
 
         while (result.hasNext()) {
-            friends.add(result.next().get("friends").get("userID"));
+            users.add(result.next().get("users").get("userID"));
         }
 
-        return friends;
+        return users;
     }
 
-    public JSONObject addFriend(String userAID, String userBID) {
+    public JSONObject follow(String userAID, String userBID) {
         Statement statement = new Statement(
                 "MATCH (a:User {userID: {userAID}}) " +
                 "MATCH (b:User {userID: {userBID}}) " +
-                "CREATE UNIQUE (a)-[:FRIENDS]->(b)",
+                "CREATE UNIQUE (a)-[:FOLLOW]->(b)",
                 Values.parameters("userAID", userAID, "userBID", userBID));
         StatementResult result = runQuery(statement);
 
         return successJson();
     }
 
-    public JSONObject removeFriend(String userAID, String userBID) {
+    public JSONObject unfollow(String userAID, String userBID) {
         Statement statement = new Statement(
                 "MATCH (a:User {userID: {userAID}}) " +
                 "MATCH (b:User {userID: {userBID}}) " +
-                "MATCH (a)-[r:FRIENDS]-(b) " +
-                "DELETE r",
-                Values.parameters("userAID", userAID, "userBID", userBID));
-        StatementResult result = runQuery(statement);
-
-        return successJson();
-    }
-
-    public JSONObject addFriendRequest(String userAID, String userBID) {
-        Statement statement = new Statement(
-                "MATCH (a:User {userID: {userAID}}) " +
-                "MATCH (b:User {userID: {userBID}}) " +
-                "CREATE UNIQUE (a)-[:REQUEST]->(b)",
-                Values.parameters("userAID", userAID, "userBID", userBID));
-        StatementResult result = runQuery(statement);
-
-        return successJson();
-    }
-
-    public JSONObject getPendingFriendRequests(String userID) {
-        Statement statement = new Statement(
-                "MATCH (friends) -[:REQUEST]->(u:User {userID: {userID}}) " +
-                "RETURN friends",
-                Values.parameters("userID", userID));
-        StatementResult result = runQuery(statement);
-
-        return getFriendsFromResult(result);
-    }
-
-    public JSONObject getSentFriendRequests(String userID) {
-        Statement statement = new Statement(
-                "MATCH (u:User {userID: {userID}})-[:REQUEST]->(friends) " +
-                "RETURN friends",
-                Values.parameters("userID", userID));
-        StatementResult result = runQuery(statement);
-
-        return getFriendsFromResult(result);
-    }
-
-    public JSONObject removeFriendRequest(String userAID, String userBID) {
-        Statement statement = new Statement("MATCH (a:User {userID: {userAID}}) " +
-                "MATCH (b:User {userID: {userBID}}) " +
-                "MATCH (a)-[r:REQUEST]->(b)" +
+                "MATCH (a)-[r:FOLLOW]->(b) " +
                 "DELETE r",
                 Values.parameters("userAID", userAID, "userBID", userBID));
         StatementResult result = runQuery(statement);
@@ -189,7 +139,7 @@ public class DBManager {
         Statement statement = new Statement(
                 "MATCH (caller:User {userID: {userID}})-[*1..2]-(events:Event) " +
                 "MATCH (events)-[:ATTENDED]-(atEvent:User) " +
-                "MATCH (events)-[:VIDEO]-(eventVideos:Video) " +
+                "OPTIONAL MATCH (events)-[:VIDEO]-(eventVideos:Video) " +
                 "OPTIONAL MATCH (atEvent)-[l:LIKES]-(events) " +
                 "RETURN events, collect(distinct {member: atEvent, likes: l}) AS members, collect(distinct eventVideos) AS videos",
                 Values.parameters("userID", userID));
@@ -253,21 +203,21 @@ public class DBManager {
 
             event.put("videos", videosJson);
 
-            // Friends
+            // Members
             JSONArray membersJson = new JSONArray();
             Value members  = record.get("members");
 
             for (int i = 0; i < members.size(); i++) {
                 Value member = members.get(i);
-                JSONObject friend = new JSONObject();
+                JSONObject users = new JSONObject();
 
-                friend.put("userID", member.get("member").get("userID"));
-                friend.put("name", member.get("member").get("name"));
-                friend.put("email", member.get("member").get("email"));
-                friend.put("profileID", member.get("member").get("profilePicID", ""));
-                friend.put("likesEvent", relationshipExists(member.get("likes")));
+                users.put("userID", member.get("member").get("userID"));
+                users.put("name", member.get("member").get("name"));
+                users.put("email", member.get("member").get("email"));
+                users.put("profileID", member.get("member").get("profilePicID", ""));
+                users.put("likesEvent", relationshipExists(member.get("likes")));
 
-                membersJson.add(friend);
+                membersJson.add(users);
             }
 
             event.put("members", membersJson);
@@ -280,24 +230,24 @@ public class DBManager {
         return response;
     }
 
-    private JSONObject getFriendsFromResult(StatementResult result) {
+    private JSONObject getUsersFromResult(StatementResult result) {
         JSONObject response = successJson();
-        JSONArray friends = new JSONArray();
+        JSONArray users = new JSONArray();
 
         while (result.hasNext()) {
             Record record = result.next();
-            Value friendValue = record.get("friends");
-            JSONObject friend = new JSONObject();
+            Value userValue = record.get("users");
+            JSONObject user = new JSONObject();
 
-            friend.put("userID", friendValue.get("userID"));
-            friend.put("name", friendValue.get("name"));
-            friend.put("email", friendValue.get("email"));
-            friend.put("profileID", friendValue.get("profilePicID", ""));
+            user.put("userID", userValue.get("userID"));
+            user.put("name", userValue.get("name"));
+            user.put("email", userValue.get("email"));
+            user.put("profileID", userValue.get("profilePicID", ""));
 
-            friends.add(friend);
+            users.add(user);
         }
 
-        response.put("friends", friends);
+        response.put("users", users);
 
         return response;
     }
@@ -308,6 +258,26 @@ public class DBManager {
         video.put("videoID", value.get("S3ID"));
 
         return video;
+    }
+
+    public JSONObject getFollowing(String userID) {
+        Statement statement = new Statement(
+                "MATCH (u:User {userID: {userID}})-[:FOLLOW]->(users) " +
+                "RETURN users",
+                Values.parameters("userID", userID));
+        StatementResult result = runQuery(statement);
+
+        return getUsersFromResult(result);
+    }
+
+    public JSONObject getFollowers(String userID) {
+        Statement statement = new Statement(
+                "MATCH (users)-[:FOLLOW]->(u:User {userID: {userID}}) " +
+                "RETURN users",
+                Values.parameters("userID", userID));
+        StatementResult result = runQuery(statement);
+
+        return getUsersFromResult(result);
     }
 
     private Boolean relationshipExists(Value value) {

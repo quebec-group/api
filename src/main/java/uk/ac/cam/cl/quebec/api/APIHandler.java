@@ -80,46 +80,42 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
                 return db.createUser(getUserID(input),
                         getParam(params, "name"),
                         getParam(params, "email"));
-            case "getFriends":
-                return db.getFriendsForApp(getUserID(input));
-            case "setProfilePicture": {
+            case "follow":
+                return db.follow(getUserID(input),
+                        getParam(params, "userID"));
+            case "unfollow":
+                return db.unfollow(getUserID(input),
+                        getParam(params, "userID"));
+            case "following":
+                return db.getFollowing(getUserID(input));
+            case "followers":
+                return db.getFollowers(getUserID(input));
+            case "setProfileVideo": {
+                //TODO Fix this for photo extraction
                 String S3ID = getParam(params, "S3ID");
                 String userID = getUserID(input);
 
                 sqs.sendTrainingVideo(userID, S3ID);
                 return db.setProfilePicture(userID, S3ID);
             }
-            case "addVideoToEvent": {
-                String S3ID = getParam(params, "S3ID");
-                String eventID = getParam(params, "eventID");
-                String userID = getUserID(input);
-
-                sqs.sendEventVideo(S3ID, eventID, db.getFriendsIDList(userID));
-                return db.addVideoToEvent(getParam(params, "eventID"),
-                        getParam(params, "S3ID"));
-            }
-            case "addFriend":
-                return db.addFriend(getUserID(input),
-                        getParam(params, "friendID"));
-            case "removeFriend":
-                return db.removeFriend(getUserID(input),
-                        getParam(params, "friendID"));
-            case "addFriendRequest":
-                return db.addFriendRequest(getUserID(input),
-                        getParam(params, "friendID"));
-            case "getPendingFriendRequests":
-                return db.getPendingFriendRequests(getUserID(input));
-            case "getSentFriendRequests":
-                return db.getSentFriendRequests(getUserID(input));
             case "createEvent":
                 return db.createEvent(getParam(params, "title"),
                         getParam(params, "location"),
                         getParam(params, "time"),
                         getUserID(input));
+            case "addVideoToEvent": {
+                String S3ID = getParam(params, "S3ID");
+                String eventID = getParam(params, "eventID");
+                String userID = getUserID(input);
+
+                sqs.sendEventVideo(S3ID, eventID, db.getRelatedUsers(userID));
+                return db.addVideoToEvent(getParam(params, "eventID"),
+                        getParam(params, "S3ID"));
+            }
             case "addUserToEvent":
                 return db.addUserToEvent(getParam(params, "eventID"),
                         getParam(params, "friendID"));
-            case "removeUserFromEvent":
+            case "removeFromEvent":
                 return db.removeUserFromEvent(getParam(params, "eventID"),
                         getUserID(input));
             case "getEvents":
@@ -127,7 +123,7 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
             case "likeEvent":
                 return db.likeEvent(getUserID(input), getParam(params, "eventID"));
             case "unlikeEvent":
-                return db.likeEvent(getUserID(input), getParam(params, "eventID"));
+                return db.unlikeEvent(getUserID(input), getParam(params, "eventID"));
             default:
                 throw new APIException("API '" + request + "' not supported");
         }
