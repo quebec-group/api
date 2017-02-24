@@ -11,6 +11,7 @@ public class EventProcessedHandler implements RequestHandler<EventProcessedLambd
     @Override
     public LambdaOutput handleRequest(EventProcessedLambdaInput input, Context context) {
         LambdaOutput response;
+
         try {
             db.addUsersToEvent(input.getEventID(), input.getMembers());
             response = new LambdaOutput(true);

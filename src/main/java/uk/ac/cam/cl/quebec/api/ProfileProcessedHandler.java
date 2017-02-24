@@ -11,6 +11,7 @@ public class ProfileProcessedHandler implements RequestHandler<ProfileProcessedL
     @Override
     public LambdaOutput handleRequest(ProfileProcessedLambdaInput input, Context context) {
         LambdaOutput response;
+
         try {
             db.setProfilePicture(input.getUserID(), input.getS3ID());
             response = new LambdaOutput(true);

@@ -2,8 +2,8 @@ package uk.ac.cam.cl.quebec.api;
 
 public class ProfileProcessedLambdaInput {
 
-    private String userID;
-    private String S3ID;
+    private String userID = "";
+    private String S3ID = "";
 
     public String getUserID() {
         return userID;
@@ -19,5 +19,10 @@ public class ProfileProcessedLambdaInput {
 
     public void setS3ID(String s3ID) {
         S3ID = s3ID;
+    }
+
+    @Override
+    public String toString() {
+        return "ProfileProcessedLambdaInput userID: " + userID + ", S3ID: " + S3ID;
     }
 }

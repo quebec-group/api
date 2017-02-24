@@ -13,12 +13,20 @@ public class LambdaOutput {
         this.errorMessage = errorMessage;
     }
 
-    public boolean didSucceed() {
+    public boolean getSucceeded() {
         return succeeded;
     }
 
     public String getErrorMessage() {
         return errorMessage;
+    }
+
+    public void setSucceeded(boolean succeeded) {
+        this.succeeded = succeeded;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
     }
 
     @Override
