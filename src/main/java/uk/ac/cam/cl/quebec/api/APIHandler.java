@@ -79,7 +79,8 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
             case "createUser":
                 return db.createUser(getUserID(input),
                         getParam(params, "name"),
-                        getParam(params, "email"));
+                        getParam(params, "email"),
+                        getParam(params, "arn"));
             case "follow":
                 return db.follow(getUserID(input),
                         getParam(params, "userID"));
@@ -87,9 +88,9 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
                 return db.unfollow(getUserID(input),
                         getParam(params, "userID"));
             case "following":
-                return db.getFollowing(getUserID(input));
+                return db.getFollowing(getParam(params, "userID"));
             case "followers":
-                return db.getFollowers(getUserID(input));
+                return db.getFollowers(getParam(params, "userID"));
             case "setProfileVideo": {
                 //TODO Fix this for photo extraction
                 String S3ID = getParam(params, "S3ID");
@@ -114,7 +115,9 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
             }
             case "addUserToEvent":
                 return db.addUserToEvent(getParam(params, "eventID"),
-                        getParam(params, "friendID"));
+                        getParam(params, "userID"));
+            case "getInfo":
+                return db.getInfo(getUserID(input));
             case "removeFromEvent":
                 return db.removeUserFromEvent(getParam(params, "eventID"),
                         getUserID(input));

@@ -22,10 +22,10 @@ public class DBManager {
         return driver.session();
     }
 
-    public JSONObject createUser(String ID, String name, String email) {
+    public JSONObject createUser(String ID, String name, String email, String arn) {
         Statement statement = new Statement(
-                "MERGE (u:User {name: {name}, email: {email}, userID: {ID}}) ",
-                Values.parameters("name", name, "email", email, "ID", ID));
+                "MERGE (u:User {name: {name}, email: {email}, userID: {ID}, arn: {arn}}) ",
+                Values.parameters("name", name, "email", email, "ID", ID, "arn", arn));
         StatementResult result = runQuery(statement);
 
         return successJson();
@@ -159,7 +159,7 @@ public class DBManager {
                 Values.parameters("userID", userID));
         StatementResult result = runQuery(statement);
 
-        return getEventsFromResults(result);
+        return getEventsFromResults(result, userID);
     }
 
     public JSONObject likeEvent(String userID, String eventID) {
@@ -195,7 +195,7 @@ public class DBManager {
         return result;
     }
 
-    private JSONObject getEventsFromResults(StatementResult result) {
+    private JSONObject getEventsFromResults(StatementResult result, String callerID) {
         JSONObject response = successJson();
         JSONArray events = new JSONArray();
 
@@ -205,6 +205,7 @@ public class DBManager {
             event.put("eventID", record.get("events").get("eventID"));
             event.put("title", record.get("events").get("title"));
             event.put("location", record.get("events").get("location"));
+            event.put("time", record.get("events").get("time"));
 
             // Videos
             JSONArray videosJson = new JSONArray();
@@ -216,10 +217,13 @@ public class DBManager {
             }
 
             event.put("videos", videosJson);
+            event.put("likes", Boolean.FALSE);
+
 
             // Members
             JSONArray membersJson = new JSONArray();
             Value members  = record.get("members");
+            int likesCount = 0;
 
             for (int i = 0; i < members.size(); i++) {
                 Value member = members.get(i);
@@ -229,11 +233,18 @@ public class DBManager {
                 users.put("name", member.get("member").get("name"));
                 users.put("email", member.get("member").get("email"));
                 users.put("profileID", member.get("member").get("profilePicID", ""));
-                users.put("likesEvent", relationshipExists(member.get("likes")));
+
+                if (relationshipExists(member.get("likes"))) {
+                    likesCount++;
+                    if (member.get("member").get("userID").toString().equals(callerID)) {
+                        event.put("likes", Boolean.TRUE);
+                    }
+                }
 
                 membersJson.add(users);
             }
 
+            event.put("likesCount", likesCount);
             event.put("members", membersJson);
 
             events.add(event);
@@ -300,5 +311,28 @@ public class DBManager {
 
     private JSONObject successJson() {
         return new JSONObject();
+    }
+
+    public JSONObject getInfo(String userID) {
+        Statement statement = new Statement(
+                "MATCH (u:User {userID: {userID}}) " +
+                "RETURN u",
+                Values.parameters("userID", userID));
+        StatementResult result = runQuery(statement);
+
+        JSONObject user = new JSONObject();
+
+        while (result.hasNext()) {
+            Record record = result.next();
+            Value userValue = record.get("u");
+
+            user.put("userID", userValue.get("userID"));
+            user.put("name", userValue.get("name"));
+            user.put("email", userValue.get("email"));
+            user.put("profileID", userValue.get("profilePicID", ""));
+
+        }
+
+        return user;
     }
 }
