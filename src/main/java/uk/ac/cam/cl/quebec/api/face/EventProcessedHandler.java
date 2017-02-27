@@ -1,10 +1,11 @@
-package uk.ac.cam.cl.quebec.api;
+package uk.ac.cam.cl.quebec.api.face;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import org.neo4j.driver.v1.exceptions.ClientException;
+import uk.ac.cam.cl.quebec.api.DBManager;
 
-// uk.ac.cam.cl.quebec.api.EventProcessedHandler::handleRequest
+// uk.ac.cam.cl.quebec.api.face.EventProcessedHandler::handleRequest
 public class EventProcessedHandler implements RequestHandler<EventProcessedLambdaInput, LambdaOutput> {
     private DBManager db = new DBManager();
 
@@ -14,6 +15,7 @@ public class EventProcessedHandler implements RequestHandler<EventProcessedLambd
 
         try {
             db.addUsersToEvent(input.getEventID(), input.getMembers());
+            db.setVideoThumbnail(input.getVideoID(), input.getThumbnailS3Path());
             response = new LambdaOutput(true);
         } catch (ClientException e) {
             if (context != null) {

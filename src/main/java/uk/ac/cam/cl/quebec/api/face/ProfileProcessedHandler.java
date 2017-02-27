@@ -1,10 +1,11 @@
-package uk.ac.cam.cl.quebec.api;
+package uk.ac.cam.cl.quebec.api.face;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import org.neo4j.driver.v1.exceptions.ClientException;
+import uk.ac.cam.cl.quebec.api.DBManager;
 
-// uk.ac.cam.cl.quebec.api.ProfileProcessedHandler::handleRequest
+// uk.ac.cam.cl.quebec.api.face.ProfileProcessedHandler::handleRequest
 public class ProfileProcessedHandler implements RequestHandler<ProfileProcessedLambdaInput, LambdaOutput> {
     private DBManager db = new DBManager();
 
@@ -13,7 +14,8 @@ public class ProfileProcessedHandler implements RequestHandler<ProfileProcessedL
         LambdaOutput response;
 
         try {
-            db.setProfilePicture(input.getUserID(), input.getS3ID());
+            db.setVideoThumbnail(input.getVideoID(), input.getS3ID());
+            db.setProfileThumbnail(input.getUserID(), input.getS3ID());
             response = new LambdaOutput(true);
         } catch (ClientException e) {
             if (context != null) {

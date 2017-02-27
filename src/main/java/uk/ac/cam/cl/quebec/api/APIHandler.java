@@ -13,7 +13,7 @@ import java.util.LinkedHashMap;
 public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
 
     private JSONParser parser = new JSONParser();
-    protected DBManager db = new DBManager();
+    private DBManager db = new DBManager();
     private SQSWrapper sqs = new SQSWrapper();
 
     @Override
@@ -60,8 +60,18 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
         return path.replace("/api/", "");
     }
 
-    private String getParam(JSONObject params, String key) throws APIException {
+    private String getString(JSONObject params, String key) throws APIException {
         String param = (String) params.get(key);
+
+        if (param == null) {
+            throw new APIException("Parameter '" + key + "' not found");
+        }
+
+        return param;
+    }
+
+    private Integer getInteger(JSONObject params, String key) throws APIException {
+        Integer param = (Integer) params.get(key);
 
         if (param == null) {
             throw new APIException("Parameter '" + key + "' not found");
@@ -78,55 +88,60 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
         switch (request) {
             case "createUser":
                 return db.createUser(getUserID(input),
-                        getParam(params, "name"),
-                        getParam(params, "email"),
-                        getParam(params, "arn"));
+                        getString(params, "name"),
+                        getString(params, "email"),
+                        getString(params, "arn"));
             case "follow":
                 return db.follow(getUserID(input),
-                        getParam(params, "userID"));
+                        getString(params, "userID"));
             case "unfollow":
                 return db.unfollow(getUserID(input),
-                        getParam(params, "userID"));
+                        getString(params, "userID"));
             case "following":
-                return db.getFollowing(getParam(params, "userID"));
+                return db.getFollowing(getString(params, "userID"));
             case "followers":
-                return db.getFollowers(getParam(params, "userID"));
+                return db.getFollowers(getString(params, "userID"));
             case "setProfileVideo": {
-                //TODO Fix this for photo extraction
-                String S3ID = getParam(params, "S3ID");
+                String S3ID = getString(params, "S3ID");
                 String userID = getUserID(input);
 
-                sqs.sendTrainingVideo(userID, S3ID);
-                return db.setProfilePicture(userID, S3ID);
+                JSONObject response = db.setProfileVideo(userID, S3ID);
+
+                sqs.sendTrainingVideo(S3ID, userID, (Integer) response.get("videoID"));
+
+                return response;
+            }
+            case "addVideoToEvent": {
+                String S3ID = getString(params, "S3ID");
+                Integer eventID = getInteger(params, "eventID");
+                String userID = getUserID(input);
+
+                JSONObject response = db.addVideoToEvent(eventID, S3ID);
+
+                sqs.sendEventVideo(S3ID, eventID, (Integer) response.get("videoID"),
+                        db.getRelatedUsers(userID));
+
+                return response;
             }
             case "createEvent":
-                return db.createEvent(getParam(params, "title"),
-                        getParam(params, "location"),
-                        getParam(params, "time"),
+                return db.createEvent(getString(params, "title"),
+                        getString(params, "location"),
+                        getString(params, "time"),
                         getUserID(input));
-            case "addVideoToEvent": {
-                String S3ID = getParam(params, "S3ID");
-                String eventID = getParam(params, "eventID");
-                String userID = getUserID(input);
-
-                sqs.sendEventVideo(S3ID, eventID, db.getRelatedUsers(userID));
-                return db.addVideoToEvent(getParam(params, "eventID"),
-                        getParam(params, "S3ID"));
-            }
             case "addUserToEvent":
-                return db.addUserToEvent(getParam(params, "eventID"),
-                        getParam(params, "userID"));
-            case "getInfo":
-                return db.getInfo(getUserID(input));
+                return db.addUserToEvent(getInteger(params, "eventID"),
+                        getString(params, "userID"));
             case "removeFromEvent":
-                return db.removeUserFromEvent(getParam(params, "eventID"),
+                return db.removeUserFromEvent(getInteger(params, "eventID"),
                         getUserID(input));
             case "getEvents":
                 return db.getEvents(getUserID(input));
             case "likeEvent":
-                return db.likeEvent(getUserID(input), getParam(params, "eventID"));
+                return db.likeEvent(getUserID(input), getInteger(params, "eventID"));
             case "unlikeEvent":
-                return db.unlikeEvent(getUserID(input), getParam(params, "eventID"));
+                return db.unlikeEvent(getUserID(input), getInteger(params, "eventID"));
+            case "getInfo":
+                return db.getInfo(getUserID(input));
             default:
                 throw new APIException("API '" + request + "' not supported");
         }

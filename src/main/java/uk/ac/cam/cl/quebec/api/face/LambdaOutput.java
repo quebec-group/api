@@ -1,4 +1,4 @@
-package uk.ac.cam.cl.quebec.api;
+package uk.ac.cam.cl.quebec.api.face;
 
 public class LambdaOutput {
     private boolean succeeded;

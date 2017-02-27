@@ -13,23 +13,24 @@ public class SQSWrapper {
         sqs = AmazonSQSClientBuilder.defaultClient();
     }
 
-    public void sendTrainingVideo(String userID, String S3ID) {
+    public void sendTrainingVideo(String S3ID, String userID, Integer videoID) {
         JSONObject json = new JSONObject();
 
         json.put("type", "Training Video");
         json.put("S3ID", S3ID);
         json.put("userID", userID);
+        json.put("videoID", videoID);
 
         sqs.sendMessage(VIDEO_QUEUE, json.toString());
     }
 
-    public void sendEventVideo(String S3ID, String eventID, JSONArray usersToMatch) {
+    public void sendEventVideo(String videoS3Path, Integer eventID, Integer videoID, JSONArray usersToMatch) {
         JSONObject json = new JSONObject();
 
         json.put("type", "Event Video");
-        json.put("S3ID", S3ID);
+        json.put("S3ID", videoS3Path);
         json.put("eventID", eventID);
-
+        json.put("videoID", videoID);
         json.put("usersToMatch", usersToMatch);
 
         sqs.sendMessage(VIDEO_QUEUE, json.toString());
