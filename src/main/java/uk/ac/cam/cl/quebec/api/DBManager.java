@@ -24,14 +24,34 @@ public class DBManager {
 
     public JSONObject createUser(String userID, String name, String email, String arn) {
         Statement statement = new Statement(
-                "MERGE (u:User {name: {name}, email: {email}, userID: {ID}, arn: {arn}}) ",
+                "MERGE (u:User {userID: {ID}}) " +
+                "ON CREATE SET u.name = {name}, u.email = {email}, u.arn = {arn}",
                 Values.parameters("name", name, "email", email, "ID", userID, "arn", arn));
         StatementResult result = runQuery(statement);
 
         return successJson();
     }
 
-    public JSONObject setProfileVideo(String userID, String S3Path) {
+    public JSONObject hasCompletedSignUp(String userID) {
+        Statement statement = new Statement(
+                "MATCH (u:User {userID: {userID}}) " +
+                "OPTIONAL MATCH (u)-[:TRAINING_VIDEO]->(v:Video) " +
+                "RETURN u, COUNT(v) AS trainingVideoCount",
+                Values.parameters("userID", userID));
+        StatementResult result = runQuery(statement);
+
+        JSONObject json = new JSONObject();
+        while (result.hasNext()) {
+            Record record = result.next();
+            boolean setupComplete = record.get("trainingVideoCount").asInt() > 0
+                    && record.get("u").containsKey("profileThumbnailS3Path");
+            json.put("hasCompletedSignUp", setupComplete);
+        }
+
+        return json;
+    }
+
+    public JSONObject setTrainingVideo(String userID, String S3Path) {
         Statement statement = new Statement(
                 // Get UUID
                 "MERGE (id:UniqueId {name:'Video'}) " +
@@ -42,7 +62,7 @@ public class DBManager {
                 // Create video
                 "MATCH (u:User {userID: {userID}}) " +
                 "MERGE (v:Video {S3ID: {S3ID}, videoID: uid}) " +
-                "CREATE UNIQUE (u)-[:PROFILE_PICTURE]->(v) " +
+                "CREATE UNIQUE (u)-[:TRAINING_VIDEO]->(v) " +
                 "RETURN uid",
                 Values.parameters("userID", userID, "S3ID", S3Path));
 
@@ -57,7 +77,7 @@ public class DBManager {
 
     }
 
-    public JSONObject setProfileThumbnail(String userID, String profileThumbnailS3Path) {
+    public JSONObject setProfilePicture(String userID, String profileThumbnailS3Path) {
         Statement statement = new Statement(
                 "MATCH (u:User {userID: {userID}}) " +
                 "SET u.profileThumbnailS3Path = {profileThumbnailS3Path} ",
@@ -384,5 +404,48 @@ public class DBManager {
         }
 
         return user;
+    }
+
+    public JSONObject findByName(String name) {
+        Statement statement = new Statement(
+                "MATCH (users:User) " +
+                "WHERE users.name CONTAINS {name} " +
+                "RETURN users",
+                Values.parameters("name", name));
+
+        StatementResult result = runQuery(statement);
+
+        return getUsersFromResult(result);
+    }
+
+    public JSONObject findByEmail(String email) {
+        Statement statement = new Statement(
+                "MATCH (users:User) " +
+                "WHERE users.email = {email} " +
+                "RETURN users",
+                Values.parameters("email", email));
+
+        StatementResult result = runQuery(statement);
+
+        return getUsersFromResult(result);
+    }
+
+    public JSONObject isFollowing(String followee, String follower) {
+        Statement statement = new Statement(
+                "MATCH (followee:User {userID:{followee}}) " +
+                "MATCH (follower:User {userID:{follower}}) " +
+                "OPTIONAL MATCH (follower)-[r:FOLLOWS]->(followee) " +
+                "RETURN r",
+                Values.parameters("followee", followee, "follower", follower));
+
+        StatementResult result = runQuery(statement);
+
+        JSONObject json = new JSONObject();
+
+        while (result.hasNext()) {
+            json.put("isFollowing", relationshipExists(result.next().get("r")));
+        }
+
+        return json;
     }
 }

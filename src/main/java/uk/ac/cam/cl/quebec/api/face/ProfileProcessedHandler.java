@@ -15,7 +15,6 @@ public class ProfileProcessedHandler implements RequestHandler<ProfileProcessedL
 
         try {
             db.setVideoThumbnail(input.getVideoID(), input.getS3ID());
-            db.setProfileThumbnail(input.getUserID(), input.getS3ID());
             response = new LambdaOutput(true);
         } catch (ClientException e) {
             if (context != null) {

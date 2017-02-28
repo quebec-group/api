@@ -95,6 +95,8 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
             case "follow":
                 return db.follow(getUserID(input),
                         getString(params, "userID"));
+            case "hasCompletedSignUp":
+                return db.hasCompletedSignUp(getUserID(input));
             case "unfollow":
                 return db.unfollow(getUserID(input),
                         getString(params, "userID"));
@@ -102,16 +104,18 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
                 return db.getFollowing(getString(params, "userID"));
             case "followers":
                 return db.getFollowers(getString(params, "userID"));
-            case "setProfileVideo": {
+            case "setTrainingVideo": {
                 String S3ID = getString(params, "S3ID");
                 String userID = getUserID(input);
 
-                JSONObject response = db.setProfileVideo(userID, S3ID);
+                JSONObject response = db.setTrainingVideo(userID, S3ID);
 
                 sqs.sendTrainingVideo(S3ID, userID, (Integer) response.get("videoID"));
 
                 return response;
             }
+            case "setProfilePicture":
+                return db.setProfilePicture(getUserID(input), getString(params, "S3ID"));
             case "addVideoToEvent":
                 return addVideoToEvent(getUserID(input),
                     getInteger(params, "eventID"),
@@ -142,6 +146,16 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
                 return db.unlikeEvent(getUserID(input), getInteger(params, "eventID"));
             case "getInfo":
                 return db.getInfo(getUserID(input));
+            case "isFollowing":
+                return db.isFollowing(getUserID(input), getString(params, "userID"));
+            case "find": {
+                String searchString = getString(params, "searchString");
+                if (searchString.contains("@")) {
+                    return db.findByEmail(searchString);
+                } else {
+                    return db.findByName(searchString);
+                }
+            }
             default:
                 throw new APIException("API '" + request + "' not supported");
         }
