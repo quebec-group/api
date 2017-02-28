@@ -50,7 +50,7 @@ public class DBManager {
 
         JSONObject response = new JSONObject();
         while (result.hasNext()) {
-            response.put("videoID", result.next().get("uid"));
+            response.put("videoID", result.next().get("uid").asInt());
         }
 
         return response;
@@ -95,7 +95,7 @@ public class DBManager {
 
         JSONObject response = new JSONObject();
         while (result.hasNext()) {
-            response.put("videoID", result.next().get("uid"));
+            response.put("videoID", result.next().get("uid").asInt());
         }
 
         return response;
@@ -111,7 +111,7 @@ public class DBManager {
         JSONArray users = new JSONArray();
 
         while (result.hasNext()) {
-            users.add(result.next().get("users").get("userID"));
+            users.add(result.next().get("users").get("userID").asString());
         }
 
         return users;
@@ -250,10 +250,10 @@ public class DBManager {
         while (result.hasNext()) {
             Record record = result.next();
             JSONObject event = new JSONObject();
-            event.put("eventID", record.get("events").get("eventID"));
-            event.put("title", record.get("events").get("title"));
-            event.put("location", record.get("events").get("location"));
-            event.put("time", record.get("events").get("time"));
+            event.put("eventID", record.get("events").get("eventID").asInt());
+            event.put("title", record.get("events").get("title").asString());
+            event.put("location", record.get("events").get("location").asString());
+            event.put("time", record.get("events").get("time").asString());
 
             // Videos
             JSONArray videosJson = new JSONArray();
@@ -277,9 +277,9 @@ public class DBManager {
                 Value member = members.get(i);
                 JSONObject users = new JSONObject();
 
-                users.put("userID", member.get("member").get("userID"));
-                users.put("name", member.get("member").get("name"));
-                users.put("email", member.get("member").get("email"));
+                users.put("userID", member.get("member").get("userID").asString());
+                users.put("name", member.get("member").get("name").asString());
+                users.put("email", member.get("member").get("email").asString());
                 users.put("profileID", member.get("member").get("profileThumbnailS3Path", ""));
 
                 if (relationshipExists(member.get("likes"))) {
@@ -312,9 +312,9 @@ public class DBManager {
             Value userValue = record.get("users");
             JSONObject user = new JSONObject();
 
-            user.put("userID", userValue.get("userID"));
-            user.put("name", userValue.get("name"));
-            user.put("email", userValue.get("email"));
+            user.put("userID", userValue.get("userID").asString());
+            user.put("name", userValue.get("name").asString());
+            user.put("email", userValue.get("email").asString());
             user.put("profileID", userValue.get("profileThumbnailS3Path", ""));
 
             users.add(user);
@@ -328,8 +328,8 @@ public class DBManager {
     private JSONObject getJsonFromVideo(Value value) {
         JSONObject video = new JSONObject();
 
-        video.put("videoID", value.get("videoID"));
-        video.put("videoPath", value.get("S3ID"));
+        video.put("videoID", value.get("videoID").asInt());
+        video.put("videoPath", value.get("S3ID").asString());
         video.put("thumbnailPath", value.get("thumbnailS3Path", ""));
 
         return video;
@@ -376,9 +376,9 @@ public class DBManager {
             Record record = result.next();
             Value userValue = record.get("u");
 
-            user.put("userID", userValue.get("userID"));
-            user.put("name", userValue.get("name"));
-            user.put("email", userValue.get("email"));
+            user.put("userID", userValue.get("userID").asString());
+            user.put("name", userValue.get("name").asString());
+            user.put("email", userValue.get("email").asString());
             user.put("profileID", userValue.get("profileThumbnailS3Path", ""));
 
         }

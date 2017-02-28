@@ -71,15 +71,16 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
     }
 
     private Integer getInteger(JSONObject params, String key) throws APIException {
-        Integer param = (Integer) params.get(key);
-
-        if (param == null) {
-            throw new APIException("Parameter '" + key + "' not found");
+        if (params.containsKey(key) && params.get(key) instanceof Number) {
+            return getInt(params.get(key));
         }
 
-        return param;
+        throw new APIException("Parameter '" + key + "' not found");
     }
 
+    private int getInt(Object object) {
+        return ((Number) object).intValue();
+    }
 
     private JSONObject getResultForQuery(JSONObject input) throws ParseException, APIException, ClientException {
         JSONObject params = getParams(input);
@@ -111,23 +112,22 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
 
                 return response;
             }
-            case "addVideoToEvent": {
-                String S3ID = getString(params, "S3ID");
-                Integer eventID = getInteger(params, "eventID");
+            case "addVideoToEvent":
+                return addVideoToEvent(getUserID(input),
+                    getInteger(params, "eventID"),
+                    getString(params, "S3ID"));
+            case "createEvent": {
                 String userID = getUserID(input);
-
-                JSONObject response = db.addVideoToEvent(eventID, S3ID);
-
-                sqs.sendEventVideo(S3ID, eventID, (Integer) response.get("videoID"),
-                        db.getRelatedUsers(userID));
-
-                return response;
-            }
-            case "createEvent":
-                return db.createEvent(getString(params, "title"),
+                JSONObject eventResponse = db.createEvent(getString(params, "title"),
                         getString(params, "location"),
                         getString(params, "time"),
-                        getUserID(input));
+                        userID);
+
+                String S3ID = getString(params, "videoPath");
+                int eventID = getInt(eventResponse.get("eventID"));
+
+                return addVideoToEvent(userID, eventID, S3ID);
+            }
             case "addUserToEvent":
                 return db.addUserToEvent(getInteger(params, "eventID"),
                         getString(params, "userID"));
@@ -145,6 +145,16 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
             default:
                 throw new APIException("API '" + request + "' not supported");
         }
+    }
+
+    private JSONObject addVideoToEvent(String userID, int eventID, String S3ID) {
+        JSONObject response = db.addVideoToEvent(eventID, S3ID);
+
+
+        sqs.sendEventVideo(S3ID, eventID, getInt(response.get("videoID")),
+                db.getRelatedUsers(userID));
+
+        return response;
     }
 
     private JSONObject errorBody(String message) {
