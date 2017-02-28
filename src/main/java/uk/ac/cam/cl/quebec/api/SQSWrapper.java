@@ -2,8 +2,8 @@ package uk.ac.cam.cl.quebec.api;
 
 import com.amazonaws.services.sqs.AmazonSQS;
 import com.amazonaws.services.sqs.AmazonSQSClientBuilder;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 public class SQSWrapper {
     private static String VIDEO_QUEUE = "https://sqs.eu-west-1.amazonaws.com/926867918335/processing-queue";
@@ -14,24 +14,24 @@ public class SQSWrapper {
     }
 
     public void sendTrainingVideo(String S3ID, String userID, Integer videoID) {
-        JSONObject json = new JSONObject();
+        JsonObject json = new JsonObject();
 
-        json.put("type", "Training Video");
-        json.put("S3ID", S3ID);
-        json.put("userID", userID);
-        json.put("videoID", videoID);
+        json.addProperty("type", "Training Video");
+        json.addProperty("S3ID", S3ID);
+        json.addProperty("userID", userID);
+        json.addProperty("videoID", videoID);
 
         sqs.sendMessage(VIDEO_QUEUE, json.toString());
     }
 
-    public void sendEventVideo(String videoS3Path, Integer eventID, Integer videoID, JSONArray usersToMatch) {
-        JSONObject json = new JSONObject();
+    public void sendEventVideo(String videoS3Path, int eventID, int videoID, JsonArray usersToMatch) {
+        JsonObject json = new JsonObject();
 
-        json.put("type", "Event Video");
-        json.put("S3ID", videoS3Path);
-        json.put("eventID", eventID);
-        json.put("videoID", videoID);
-        json.put("usersToMatch", usersToMatch);
+        json.addProperty("type", "Event Video");
+        json.addProperty("S3ID", videoS3Path);
+        json.addProperty("eventID", eventID);
+        json.addProperty("videoID", videoID);
+        json.add("usersToMatch", usersToMatch);
 
         sqs.sendMessage(VIDEO_QUEUE, json.toString());
     }
