@@ -1,7 +1,7 @@
 package uk.ac.cam.cl.quebec.api;
 
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import org.neo4j.driver.internal.value.RelationshipValue;
 import org.neo4j.driver.v1.*;
 
@@ -22,7 +22,7 @@ public class DBManager {
         return driver.session();
     }
 
-    public JSONObject createUser(String userID, String name, String email, String arn) {
+    public JsonObject createUser(String userID, String name, String email, String arn) {
         Statement statement = new Statement(
                 "MERGE (u:User {name: {name}, email: {email}, userID: {ID}, arn: {arn}}) ",
                 Values.parameters("name", name, "email", email, "ID", userID, "arn", arn));
@@ -31,7 +31,7 @@ public class DBManager {
         return successJson();
     }
 
-    public JSONObject setProfileVideo(String userID, String S3Path) {
+    public JsonObject setProfileVideo(String userID, String S3Path) {
         Statement statement = new Statement(
                 // Get UUID
                 "MERGE (id:UniqueId {name:'Video'}) " +
@@ -48,16 +48,16 @@ public class DBManager {
 
         StatementResult result = runQuery(statement);
 
-        JSONObject response = new JSONObject();
+        JsonObject response = new JsonObject();
         while (result.hasNext()) {
-            response.put("videoID", result.next().get("uid"));
+            response.addProperty("videoID", result.next().get("uid").asInt());
         }
 
         return response;
 
     }
 
-    public JSONObject setProfileThumbnail(String userID, String profileThumbnailS3Path) {
+    public JsonObject setProfileThumbnail(String userID, String profileThumbnailS3Path) {
         Statement statement = new Statement(
                 "MATCH (u:User {userID: {userID}}) " +
                 "SET u.profileThumbnailS3Path = {profileThumbnailS3Path} ",
@@ -67,7 +67,7 @@ public class DBManager {
         return successJson();
     }
 
-    public JSONObject setVideoThumbnail(int videoID, String S3Path) {
+    public JsonObject setVideoThumbnail(int videoID, String S3Path) {
         Statement statement = new Statement(
                 "MATCH (v:Video {videoID: {videoID}}) " +
                 "SET v.thumbnailS3Path = {S3Path} ",
@@ -77,7 +77,7 @@ public class DBManager {
         return successJson();
     }
 
-    public JSONObject addVideoToEvent(int eventID, String S3ID) {
+    public JsonObject addVideoToEvent(int eventID, String S3ID) {
         Statement statement = new Statement(
                 // Get UUID
                 "MERGE (id:UniqueId{name:'Video'}) " +
@@ -93,31 +93,31 @@ public class DBManager {
                 Values.parameters("eventID", eventID, "S3ID", S3ID));
         StatementResult result = runQuery(statement);
 
-        JSONObject response = new JSONObject();
+        JsonObject response = new JsonObject();
         while (result.hasNext()) {
-            response.put("videoID", result.next().get("uid"));
+            response.addProperty("videoID", result.next().get("uid").asInt());
         }
 
         return response;
     }
 
-    public JSONArray getRelatedUsers(String userID) {
+    public JsonArray getRelatedUsers(String userID) {
         Statement statement = new Statement(
                 "MATCH (u:User {userID: {userID}})-[:FOLLOWS]-(users:User) " +
                 "RETURN users",
                 Values.parameters("userID", userID));
         StatementResult result = runQuery(statement);
 
-        JSONArray users = new JSONArray();
+        JsonArray users = new JsonArray();
 
         while (result.hasNext()) {
-            users.add(result.next().get("users").get("userID"));
+            users.add(result.next().get("users").get("userID").asString());
         }
 
         return users;
     }
 
-    public JSONObject follow(String userAID, String userBID) {
+    public JsonObject follow(String userAID, String userBID) {
         Statement statement = new Statement(
                 "MATCH (a:User {userID: {userAID}}) " +
                 "MATCH (b:User {userID: {userBID}}) " +
@@ -128,7 +128,7 @@ public class DBManager {
         return successJson();
     }
 
-    public JSONObject unfollow(String userAID, String userBID) {
+    public JsonObject unfollow(String userAID, String userBID) {
         Statement statement = new Statement(
                 "MATCH (a:User {userID: {userAID}}) " +
                 "MATCH (b:User {userID: {userBID}}) " +
@@ -140,7 +140,7 @@ public class DBManager {
         return successJson();
     }
 
-    public JSONObject createEvent(String title, String location, String time, String creatorID) {
+    public JsonObject createEvent(String title, String location, String time, String creatorID) {
         Statement statement = new Statement(
                 // Get UUID
                 "MERGE (id:UniqueId{name:'Event'}) " +
@@ -152,17 +152,23 @@ public class DBManager {
                 "MATCH (u:User {userID: {creatorID}}) " +
                 "CREATE (e:Event {title: {title}, eventID: uid, location: {location}, time: {time}}) " +
                 "CREATE UNIQUE (u)-[:CREATED]->(e), " +
-                "(u)-[:ATTENDED]->(e)",
+                "(u)-[:ATTENDED]->(e) " +
+                "RETURN uid",
                 Values.parameters("title", title,
                         "creatorID", creatorID,
                         "location", location,
                         "time", time));
         StatementResult result = runQuery(statement);
 
-        return successJson();
+        JsonObject response = new JsonObject();
+        while (result.hasNext()) {
+            response.addProperty("eventID", result.next().get("uid").asInt());
+        }
+
+        return response;
     }
 
-    public JSONObject addUserToEvent(int eventID, String userID) {
+    public JsonObject addUserToEvent(int eventID, String userID) {
         Statement statement = new Statement(
                 "MATCH (u:User {userID: {userID}}) " +
                 "MATCH (e:Event {eventID: {eventID}}) " +
@@ -173,7 +179,7 @@ public class DBManager {
         return successJson();
     }
 
-    public JSONObject addUsersToEvent(int eventID, List<String> members) {
+    public JsonObject addUsersToEvent(int eventID, List<String> members) {
         Statement statement = new Statement(
                 "MATCH (e:Event {eventID: {eventID}}) " +
                 "MATCH (u:User) " +
@@ -185,7 +191,7 @@ public class DBManager {
         return successJson();
     }
 
-    public JSONObject removeUserFromEvent(int eventID, String userID) {
+    public JsonObject removeUserFromEvent(int eventID, String userID) {
         Statement statement = new Statement(
                 "MATCH (u:User {userID: {userID}}) " +
                 "MATCH (e:Event {eventID: {eventID}}) " +
@@ -197,7 +203,7 @@ public class DBManager {
         return successJson();
     }
 
-    public JSONObject getEvents(String userID) {
+    public JsonObject getEvents(String userID) {
         Statement statement = new Statement(
                 "MATCH (caller:User {userID: {userID}})-[*1..2]-(events:Event) " +
                 "MATCH (events)-[:ATTENDED]-(atEvent:User) " +
@@ -210,7 +216,7 @@ public class DBManager {
         return getEventsFromResults(result, userID);
     }
 
-    public JSONObject likeEvent(String userID, int eventID) {
+    public JsonObject likeEvent(String userID, int eventID) {
         Statement statement = new Statement(
                 "MATCH (u:User {userID: {userID}}) " +
                 "MATCH (e:Event {eventID: {eventID}}) " +
@@ -222,7 +228,7 @@ public class DBManager {
         return successJson();
     }
 
-    public JSONObject unlikeEvent(String userID, int eventID) {
+    public JsonObject unlikeEvent(String userID, int eventID) {
         Statement statement = new Statement(
                 "MATCH (u:User {userID: {userID}}) " +
                 "MATCH (e:Event {eventID: {eventID}}) " +
@@ -243,20 +249,20 @@ public class DBManager {
         return result;
     }
 
-    private JSONObject getEventsFromResults(StatementResult result, String callerID) {
-        JSONObject response = successJson();
-        JSONArray events = new JSONArray();
+    private JsonObject getEventsFromResults(StatementResult result, String callerID) {
+        JsonObject response = successJson();
+        JsonArray events = new JsonArray();
 
         while (result.hasNext()) {
             Record record = result.next();
-            JSONObject event = new JSONObject();
-            event.put("eventID", record.get("events").get("eventID"));
-            event.put("title", record.get("events").get("title"));
-            event.put("location", record.get("events").get("location"));
-            event.put("time", record.get("events").get("time"));
+            JsonObject event = new JsonObject();
+            event.addProperty("eventID", record.get("events").get("eventID").asInt());
+            event.addProperty("title", record.get("events").get("title").asString());
+            event.addProperty("location", record.get("events").get("location").asString());
+            event.addProperty("time", record.get("events").get("time").asString());
 
             // Videos
-            JSONArray videosJson = new JSONArray();
+            JsonArray videosJson = new JsonArray();
             Value videos  = record.get("videos");
 
             for (int i = 0; i < videos.size(); i++) {
@@ -264,78 +270,78 @@ public class DBManager {
                 videosJson.add(getJsonFromVideo(video));
             }
 
-            event.put("videos", videosJson);
-            event.put("likes", Boolean.FALSE);
+            event.add("videos", videosJson);
+            event.addProperty("likes", Boolean.FALSE);
 
 
             // Members
-            JSONArray membersJson = new JSONArray();
+            JsonArray membersJson = new JsonArray();
             Value members  = record.get("members");
             int likesCount = 0;
 
             for (int i = 0; i < members.size(); i++) {
                 Value member = members.get(i);
-                JSONObject users = new JSONObject();
+                JsonObject users = new JsonObject();
 
-                users.put("userID", member.get("member").get("userID"));
-                users.put("name", member.get("member").get("name"));
-                users.put("email", member.get("member").get("email"));
-                users.put("profileID", member.get("member").get("profileThumbnailS3Path", ""));
+                users.addProperty("userID", member.get("member").get("userID").asString());
+                users.addProperty("name", member.get("member").get("name").asString());
+                users.addProperty("email", member.get("member").get("email").asString());
+                users.addProperty("profileID", member.get("member").get("profileThumbnailS3Path", ""));
 
                 if (relationshipExists(member.get("likes"))) {
                     likesCount++;
                     if (member.get("member").get("userID").toString().equals(callerID)) {
-                        event.put("likes", Boolean.TRUE);
+                        event.addProperty("likes", Boolean.TRUE);
                     }
                 }
 
                 membersJson.add(users);
             }
 
-            event.put("likesCount", likesCount);
-            event.put("members", membersJson);
+            event.addProperty("likesCount", likesCount);
+            event.add("members", membersJson);
 
             events.add(event);
         }
 
-        response.put("events", events);
+        response.add("events", events);
 
         return response;
     }
 
-    private JSONObject getUsersFromResult(StatementResult result) {
-        JSONObject response = successJson();
-        JSONArray users = new JSONArray();
+    private JsonObject getUsersFromResult(StatementResult result) {
+        JsonObject response = successJson();
+        JsonArray users = new JsonArray();
 
         while (result.hasNext()) {
             Record record = result.next();
             Value userValue = record.get("users");
-            JSONObject user = new JSONObject();
+            JsonObject user = new JsonObject();
 
-            user.put("userID", userValue.get("userID"));
-            user.put("name", userValue.get("name"));
-            user.put("email", userValue.get("email"));
-            user.put("profileID", userValue.get("profileThumbnailS3Path", ""));
+            user.addProperty("userID", userValue.get("userID").asString());
+            user.addProperty("name", userValue.get("name").asString());
+            user.addProperty("email", userValue.get("email").asString());
+            user.addProperty("profileID", userValue.get("profileThumbnailS3Path", ""));
 
             users.add(user);
         }
 
-        response.put("users", users);
+        response.add("users", users);
 
         return response;
     }
 
-    private JSONObject getJsonFromVideo(Value value) {
-        JSONObject video = new JSONObject();
+    private JsonObject getJsonFromVideo(Value value) {
+        JsonObject video = new JsonObject();
 
-        video.put("videoID", value.get("videoID"));
-        video.put("videoPath", value.get("S3ID"));
-        video.put("thumbnailPath", value.get("thumbnailS3Path", ""));
+        video.addProperty("videoID", value.get("videoID").asInt());
+        video.addProperty("videoPath", value.get("S3ID").asString());
+        video.addProperty("thumbnailPath", value.get("thumbnailS3Path", ""));
 
         return video;
     }
 
-    public JSONObject getFollowing(String userID) {
+    public JsonObject getFollowing(String userID) {
         Statement statement = new Statement(
                 "MATCH (u:User {userID: {userID}})-[:FOLLOWS]->(users) " +
                 "RETURN users",
@@ -345,7 +351,7 @@ public class DBManager {
         return getUsersFromResult(result);
     }
 
-    public JSONObject getFollowers(String userID) {
+    public JsonObject getFollowers(String userID) {
         Statement statement = new Statement(
                 "MATCH (users)-[:FOLLOWS]->(u:User {userID: {userID}}) " +
                 "RETURN users",
@@ -359,27 +365,27 @@ public class DBManager {
         return value instanceof RelationshipValue;
     }
 
-    private JSONObject successJson() {
-        return new JSONObject();
+    private JsonObject successJson() {
+        return new JsonObject();
     }
 
-    public JSONObject getInfo(String userID) {
+    public JsonObject getInfo(String userID) {
         Statement statement = new Statement(
                 "MATCH (u:User {userID: {userID}}) " +
                 "RETURN u",
                 Values.parameters("userID", userID));
         StatementResult result = runQuery(statement);
 
-        JSONObject user = new JSONObject();
+        JsonObject user = new JsonObject();
 
         while (result.hasNext()) {
             Record record = result.next();
             Value userValue = record.get("u");
 
-            user.put("userID", userValue.get("userID"));
-            user.put("name", userValue.get("name"));
-            user.put("email", userValue.get("email"));
-            user.put("profileID", userValue.get("profileThumbnailS3Path", ""));
+            user.addProperty("userID", userValue.get("userID").asString());
+            user.addProperty("name", userValue.get("name").asString());
+            user.addProperty("email", userValue.get("email").asString());
+            user.addProperty("profileID", userValue.get("profileThumbnailS3Path", ""));
 
         }
 
