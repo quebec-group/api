@@ -1,5 +1,6 @@
 package uk.ac.cam.cl.quebec.api;
 
+import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.sqs.AmazonSQS;
 import com.amazonaws.services.sqs.AmazonSQSClientBuilder;
 import org.json.simple.JSONArray;
@@ -13,7 +14,7 @@ public class SQSWrapper {
         sqs = AmazonSQSClientBuilder.defaultClient();
     }
 
-    public void sendTrainingVideo(String S3ID, String userID, int videoID) {
+    public void sendTrainingVideo(String S3ID, String userID, int videoID, Context context) {
         JSONObject json = new JSONObject();
 
         json.put("type", "Training Video");
@@ -21,10 +22,14 @@ public class SQSWrapper {
         json.put("userID", userID);
         json.put("videoID", videoID);
 
+        if (context != null) {
+            context.getLogger().log("Sending: " + json.toString());
+        }
+
         sqs.sendMessage(VIDEO_QUEUE, json.toString());
     }
 
-    public void sendEventVideo(String videoS3Path, int eventID, int videoID, JSONArray usersToMatch) {
+    public void sendEventVideo(String videoS3Path, int eventID, int videoID, JSONArray usersToMatch, Context context) {
         JSONObject json = new JSONObject();
 
         json.put("type", "Event Video");
@@ -32,6 +37,10 @@ public class SQSWrapper {
         json.put("eventID", eventID);
         json.put("videoID", videoID);
         json.put("usersToMatch", usersToMatch);
+
+        if (context != null) {
+            context.getLogger().log("Sending: " + json.toString());
+        }
 
         sqs.sendMessage(VIDEO_QUEUE, json.toString());
     }

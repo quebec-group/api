@@ -68,13 +68,7 @@ public class DBManager {
 
         StatementResult result = runQuery(statement);
 
-        JSONObject response = new JSONObject();
-        while (result.hasNext()) {
-            response.put("videoID", result.next().get("uid").asInt());
-        }
-
-        return response;
-
+        return jsonWithUid(result, "videoID");
     }
 
     public JSONObject setProfilePicture(String userID, String profileThumbnailS3Path) {
@@ -113,12 +107,7 @@ public class DBManager {
                 Values.parameters("eventID", eventID, "S3ID", S3ID));
         StatementResult result = runQuery(statement);
 
-        JSONObject response = new JSONObject();
-        while (result.hasNext()) {
-            response.put("videoID", result.next().get("uid").asInt());
-        }
-
-        return response;
+        return jsonWithUid(result, "videoID");
     }
 
     public JSONArray getRelatedUsers(String userID) {
@@ -172,14 +161,24 @@ public class DBManager {
                 "MATCH (u:User {userID: {creatorID}}) " +
                 "CREATE (e:Event {title: {title}, eventID: uid, location: {location}, time: {time}}) " +
                 "CREATE UNIQUE (u)-[:CREATED]->(e), " +
-                "(u)-[:ATTENDED]->(e)",
+                "(u)-[:ATTENDED]->(e) " +
+                "RETURN uid",
                 Values.parameters("title", title,
                         "creatorID", creatorID,
                         "location", location,
                         "time", time));
         StatementResult result = runQuery(statement);
 
-        return successJson();
+        return jsonWithUid(result, "eventID");
+    }
+
+    private JSONObject jsonWithUid(StatementResult result, String key) {
+        JSONObject json = new JSONObject();
+        while (result.hasNext()) {
+            json.put(key, result.next().get("uid").asInt());
+        }
+
+        return json;
     }
 
     public JSONObject addUserToEvent(int eventID, String userID) {
@@ -473,13 +472,13 @@ public class DBManager {
         return getUsersFromResult(result);
     }
 
-    public JSONObject isFollowing(String followee, String follower) {
+    public JSONObject isFollowing(String leader, String follower) {
         Statement statement = new Statement(
-                "MATCH (followee:User {userID:{followee}}) " +
+                "MATCH (leader:User {userID:{leader}}) " +
                 "MATCH (follower:User {userID:{follower}}) " +
-                "OPTIONAL MATCH (follower)-[r:FOLLOWS]->(followee) " +
+                "OPTIONAL MATCH (follower)-[r:FOLLOWS]->(leader) " +
                 "RETURN r",
-                Values.parameters("followee", followee, "follower", follower));
+                Values.parameters("leader", leader, "follower", follower));
 
         StatementResult result = runQuery(statement);
 

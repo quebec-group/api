@@ -18,18 +18,13 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
 
     @Override
     public JSONObject handleRequest(JSONObject input, Context context) {
-
-        JSONObject responseJson = null;
+        JSONObject responseJson;
 
         try {
             responseJson = new JSONObject();
             responseJson.put("statusCode", "200");
             responseJson.put("headers", new JSONObject());
-            responseJson.put("body", getResultForQuery(input).toString());
-
-            if (context != null) {
-                context.getLogger().log(responseJson.toString());
-            }
+            responseJson.put("body", getResultForQuery(input, context).toString());
         } catch (ParseException|APIException|ClientException e) {
             if (context != null) {
                 context.getLogger().log(e.toString());
@@ -55,9 +50,15 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
         return (JSONObject) parser.parse((String) input.get("body"));
     }
 
-    private String getRequest(JSONObject input) {
+    private String getRequest(JSONObject input, Context context) {
         String path = (String) input.get("path");
-        return path.replace("/api/", "");
+        String request = path.replace("/api/", "");
+
+        if (context != null) {
+            context.getLogger().log("Doing: " + request);
+        }
+
+        return request;
     }
 
     private String getString(JSONObject params, String key) throws APIException {
@@ -82,9 +83,9 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
         return ((Number) object).intValue();
     }
 
-    private JSONObject getResultForQuery(JSONObject input) throws ParseException, APIException, ClientException {
+    private JSONObject getResultForQuery(JSONObject input, Context context) throws ParseException, APIException, ClientException {
         JSONObject params = getParams(input);
-        String request = getRequest(input);
+        String request = getRequest(input, context);
 
         switch (request) {
             case "createUser":
@@ -114,7 +115,7 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
 
                 JSONObject response = db.setTrainingVideo(userID, S3ID);
 
-                sqs.sendTrainingVideo(S3ID, userID, (Integer) response.get("videoID"));
+                sqs.sendTrainingVideo(S3ID, userID, (Integer) response.get("videoID"), context);
 
                 return response;
             }
@@ -122,8 +123,7 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
                 return db.setProfilePicture(getUserID(input), getString(params, "S3ID"));
             case "addVideoToEvent":
                 return addVideoToEvent(getUserID(input),
-                    getInteger(params, "eventID"),
-                    getString(params, "S3ID"));
+                    getInteger(params, "eventID"), getString(params, "S3ID"), context);
             case "createEvent": {
                 String userID = getUserID(input);
                 JSONObject eventResponse = db.createEvent(getString(params, "title"),
@@ -134,7 +134,7 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
                 String S3ID = getString(params, "videoPath");
                 int eventID = getInt(eventResponse.get("eventID"));
 
-                return addVideoToEvent(userID, eventID, S3ID);
+                return addVideoToEvent(userID, eventID, S3ID, context);
             }
             case "addUserToEvent":
                 return db.addUserToEvent(getInteger(params, "eventID"),
@@ -167,12 +167,12 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
         }
     }
 
-    private JSONObject addVideoToEvent(String userID, int eventID, String S3ID) {
+    private JSONObject addVideoToEvent(String userID, int eventID, String S3ID, Context context) {
         JSONObject response = db.addVideoToEvent(eventID, S3ID);
 
 
         sqs.sendEventVideo(S3ID, eventID, getInt(response.get("videoID")),
-                db.getRelatedUsers(userID));
+                db.getRelatedUsers(userID), context);
 
         return response;
     }
