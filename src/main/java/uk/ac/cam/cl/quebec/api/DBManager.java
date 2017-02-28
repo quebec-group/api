@@ -217,6 +217,19 @@ public class DBManager {
         return successJson();
     }
 
+    public JSONObject getAttendedEvents(String userID) {
+        Statement statement = new Statement(
+                "MATCH (caller:User {userID: {userID}})-[:ATTENDED]->(events:Event) " +
+                "MATCH (events)-[:ATTENDED]-(atEvent:User) " +
+                "OPTIONAL MATCH (events)-[:VIDEO]-(eventVideos:Video) " +
+                "OPTIONAL MATCH (atEvent)-[l:LIKES]-(events) " +
+                "RETURN events, collect(distinct {member: atEvent, likes: l}) AS members, collect(distinct eventVideos) AS videos",
+                Values.parameters("userID", userID));
+        StatementResult result = runQuery(statement);
+
+        return getEventsFromResults(result, userID);
+    }
+
     public JSONObject getEvents(String userID) {
         Statement statement = new Statement(
                 "MATCH (caller:User {userID: {userID}})-[*1..2]-(events:Event) " +
@@ -373,6 +386,36 @@ public class DBManager {
         StatementResult result = runQuery(statement);
 
         return getUsersFromResult(result);
+    }
+
+    public JSONObject getFollowingCount(String userID) {
+        Statement statement = new Statement(
+                "MATCH (u:User {userID: {userID}})-[:FOLLOWS]->(users) " +
+                "RETURN COUNT(users) AS count",
+                Values.parameters("userID", userID));
+        StatementResult result = runQuery(statement);
+
+        return getCountFromResult(result);
+    }
+
+    public JSONObject getFollowersCount(String userID) {
+        Statement statement = new Statement(
+                "MATCH (users)-[:FOLLOWS]->(u:User {userID: {userID}}) " +
+                "RETURN COUNT(users) AS count",
+                Values.parameters("userID", userID));
+        StatementResult result = runQuery(statement);
+
+        return getCountFromResult(result);
+    }
+
+    public JSONObject getCountFromResult(StatementResult result) {
+        JSONObject json = new JSONObject();
+
+        while (result.hasNext()) {
+            json.put("count", result.next().get("count").asInt());
+        }
+
+        return json;
     }
 
     private Boolean relationshipExists(Value value) {

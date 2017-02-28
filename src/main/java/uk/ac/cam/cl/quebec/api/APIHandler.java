@@ -104,6 +104,10 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
                 return db.getFollowing(getString(params, "userID"));
             case "followers":
                 return db.getFollowers(getString(params, "userID"));
+            case "followingCount":
+                return db.getFollowingCount(getString(params, "userID"));
+            case "followersCount":
+                return db.getFollowersCount(getString(params, "userID"));
             case "setTrainingVideo": {
                 String S3ID = getString(params, "S3ID");
                 String userID = getUserID(input);
@@ -140,6 +144,8 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
                         getUserID(input));
             case "getEvents":
                 return db.getEvents(getUserID(input));
+            case "getAttendedEvents":
+                return db.getAttendedEvents(getString(params, "userID"));
             case "likeEvent":
                 return db.likeEvent(getUserID(input), getInteger(params, "eventID"));
             case "unlikeEvent":
