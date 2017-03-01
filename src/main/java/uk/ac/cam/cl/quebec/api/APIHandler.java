@@ -152,8 +152,10 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
                 return db.unlikeEvent(getUserID(input), getInteger(params, "eventID"));
             case "getInfo":
                 return db.getInfo(getUserID(input));
-            case "isFollowing":
-                return db.isFollowing(getUserID(input), getString(params, "userID"));
+            case "followsMe":
+                return db.aFollowsB(getString(params, "userID"), getUserID(input));
+            case "iFollow":
+                return db.aFollowsB(getUserID(input), getString(params, "userID"));
             case "find": {
                 String searchString = getString(params, "searchString");
                 if (searchString.contains("@")) {

@@ -222,7 +222,8 @@ public class DBManager {
                 "MATCH (events)-[:ATTENDED]-(atEvent:User) " +
                 "OPTIONAL MATCH (events)-[:VIDEO]-(eventVideos:Video) " +
                 "OPTIONAL MATCH (atEvent)-[l:LIKES]-(events) " +
-                "RETURN events, collect(distinct {member: atEvent, likes: l}) AS members, collect(distinct eventVideos) AS videos",
+                "RETURN events, collect(distinct {member: atEvent, likes: l}) AS members, " +
+                        "collect(distinct eventVideos) AS videos",
                 Values.parameters("userID", userID));
         StatementResult result = runQuery(statement);
 
@@ -235,7 +236,8 @@ public class DBManager {
                 "MATCH (events)-[:ATTENDED]-(atEvent:User) " +
                 "OPTIONAL MATCH (events)-[:VIDEO]-(eventVideos:Video) " +
                 "OPTIONAL MATCH (atEvent)-[l:LIKES]-(events) " +
-                "RETURN events, collect(distinct {member: atEvent, likes: l}) AS members, collect(distinct eventVideos) AS videos",
+                "RETURN events, collect(distinct {member: atEvent, likes: l}) AS members, " +
+                    "collect(distinct eventVideos) AS videos",
                 Values.parameters("userID", userID));
         StatementResult result = runQuery(statement);
 
@@ -472,20 +474,20 @@ public class DBManager {
         return getUsersFromResult(result);
     }
 
-    public JSONObject isFollowing(String leader, String follower) {
+    public JSONObject aFollowsB(String userAID, String userBID) {
         Statement statement = new Statement(
-                "MATCH (leader:User {userID:{leader}}) " +
-                "MATCH (follower:User {userID:{follower}}) " +
-                "OPTIONAL MATCH (follower)-[r:FOLLOWS]->(leader) " +
+                "MATCH (a:User {userID:{userAID}}) " +
+                "MATCH (b:User {userID:{userBID}}) " +
+                "OPTIONAL MATCH (a)-[r:FOLLOWS]->(b) " +
                 "RETURN r",
-                Values.parameters("leader", leader, "follower", follower));
+                Values.parameters("userAID", userAID, "userBID", userBID));
 
         StatementResult result = runQuery(statement);
 
         JSONObject json = new JSONObject();
-
+        json.put("result", false);
         while (result.hasNext()) {
-            json.put("isFollowing", relationshipExists(result.next().get("r")));
+            json.put("result", relationshipExists(result.next().get("r")));
         }
 
         return json;
