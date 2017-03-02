@@ -318,7 +318,7 @@ public class DBManager {
 
                 if (relationshipExists(member.get("likes"))) {
                     likesCount++;
-                    if (member.get("member").get("userID").toString().equals(callerID)) {
+                    if (member.get("member").get("userID").asString().equals(callerID)) {
                         event.put("likes", Boolean.TRUE);
                     }
                 }
