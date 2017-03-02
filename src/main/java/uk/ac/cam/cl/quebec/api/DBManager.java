@@ -234,8 +234,9 @@ public class DBManager {
                 "MATCH (events)-[:ATTENDED]-(atEvent:User) " +
                 "OPTIONAL MATCH (events)-[:VIDEO]-(eventVideos:Video) " +
                 "OPTIONAL MATCH (atEvent)-[l:LIKES]-(events) " +
-                "RETURN events, collect(distinct {member: atEvent, likes: l}) AS members, " +
-                        "collect(distinct eventVideos) AS videos",
+                "OPTIONAL MATCH (atEvent)-[c:CREATED]-(events) " +
+                "RETURN events, collect(distinct {member: atEvent, likes: l, created: c}) AS members, " +
+                "collect(distinct eventVideos) AS videos",
                 Values.parameters("userID", userID));
         StatementResult result = runQuery(statement);
 
@@ -245,10 +246,11 @@ public class DBManager {
     public JSONObject getEvents(String userID) {
         Statement statement = new Statement(
                 "MATCH (caller:User {userID: {userID}})-[*1..2]-(events:Event) " +
-                "MATCH (events)-[:ATTENDED]-(atEvent:User) " +
+                "MATCH (events)-[:ATTENDED|CREATED]-(atEvent:User) " +
                 "OPTIONAL MATCH (events)-[:VIDEO]-(eventVideos:Video) " +
                 "OPTIONAL MATCH (atEvent)-[l:LIKES]-(events) " +
-                "RETURN events, collect(distinct {member: atEvent, likes: l}) AS members, " +
+                "OPTIONAL MATCH (atEvent)-[c:CREATED]-(events) " +
+                "RETURN events, collect(distinct {member: atEvent, likes: l, created: c}) AS members, " +
                     "collect(distinct eventVideos) AS videos",
                 Values.parameters("userID", userID));
         StatementResult result = runQuery(statement);
@@ -321,12 +323,12 @@ public class DBManager {
 
             for (int i = 0; i < members.size(); i++) {
                 Value member = members.get(i);
-                JSONObject users = new JSONObject();
+                JSONObject user = new JSONObject();
 
-                users.put("userID", member.get("member").get("userID").asString());
-                users.put("name", member.get("member").get("name").asString());
-                users.put("email", member.get("member").get("email").asString());
-                users.put("profileID", member.get("member").get("profileThumbnailS3Path", ""));
+                user.put("userID", member.get("member").get("userID").asString());
+                user.put("name", member.get("member").get("name").asString());
+                user.put("email", member.get("member").get("email").asString());
+                user.put("profileID", member.get("member").get("profileThumbnailS3Path", ""));
 
                 if (relationshipExists(member.get("likes"))) {
                     likesCount++;
@@ -335,7 +337,11 @@ public class DBManager {
                     }
                 }
 
-                membersJson.add(users);
+                if (relationshipExists(member.get("created"))) {
+                    event.put("creator", user);
+                }
+
+                membersJson.add(user);
             }
 
             event.put("likesCount", likesCount);
