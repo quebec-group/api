@@ -98,6 +98,8 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
                 String myID = getUserID(input);
                 JSONObject result =  db.follow(myID, getString(params, "userID"));
                 sns.notifyFollowed((String) result.get("arn"), myID);
+
+                return result;
             }
             case "hasCompletedSignUp":
                 return db.hasCompletedSignUp(getUserID(input));

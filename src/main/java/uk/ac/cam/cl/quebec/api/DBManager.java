@@ -124,6 +124,8 @@ public class DBManager {
             users.add(result.next().get("users").get("userID").asString());
         }
 
+        users.add(userID);
+
         return users;
     }
 
@@ -368,7 +370,7 @@ public class DBManager {
             user.put("name", userValue.get("name").asString());
             user.put("email", userValue.get("email").asString());
             user.put("profileID", userValue.get("profileThumbnailS3Path", ""));
-            user.put("followsMe", relationshipExists(userValue.get("followsRelation")));
+            user.put("iFollow", relationshipExists(record.get("followsRelation")));
 
             users.add(user);
         }
@@ -391,8 +393,7 @@ public class DBManager {
     public JSONObject getFollowing(String userID) {
         Statement statement = new Statement(
                 "MATCH (me:User {userID: {userID}}) " +
-                "MATCH (me)-[:FOLLOWS]->(users) " +
-                "OPTIONAL MATCH (users)-[followsRelation:FOLLOWS]->(me)" +
+                "MATCH (me)-[followsRelation:FOLLOWS]->(users) " +
                 "RETURN users, followsRelation",
                 Values.parameters("userID", userID));
         StatementResult result = runQuery(statement);
@@ -402,7 +403,9 @@ public class DBManager {
 
     public JSONObject getFollowers(String userID) {
         Statement statement = new Statement(
-                "MATCH (users)-[followsRelation:FOLLOWS]->(u:User {userID: {userID}}) " +
+                "MATCH (me:User {userID: {userID}})" +
+                "MATCH (users)-[:FOLLOWS]->(me) " +
+                "OPTIONAL MATCH (me)-[followsRelation:FOLLOWS]->(users)" +
                 "RETURN users, followsRelation",
                 Values.parameters("userID", userID));
         StatementResult result = runQuery(statement);
@@ -476,7 +479,7 @@ public class DBManager {
                 "MATCH (users:User) " +
                 "WHERE users.name CONTAINS {name} " +
                 "MATCH (me:User {userID:{currentID}}) " +
-                "OPTIONAL MATCH (users)-[followsRelation:FOLLOWS]->(me)" +
+                "OPTIONAL MATCH (me)-[followsRelation:FOLLOWS]->(users)" +
                 "RETURN users, followsRelation",
                 Values.parameters("name", name, "currentID", currentID));
 
@@ -490,7 +493,7 @@ public class DBManager {
                 "MATCH (users:User) " +
                 "WHERE users.email = {email} " +
                 "MATCH (me:User {userID:{currentID}}) " +
-                "OPTIONAL MATCH (users)-[followsRelation:FOLLOWS]->(me)" +
+                "OPTIONAL MATCH (me)-[followsRelation:FOLLOWS]->(users)" +
                 "RETURN users, followsRelation",
                 Values.parameters("email", email, "currentID", currentID));
 
