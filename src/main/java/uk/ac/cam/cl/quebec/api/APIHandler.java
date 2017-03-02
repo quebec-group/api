@@ -15,6 +15,7 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
     private JSONParser parser = new JSONParser();
     private DBManager db = new DBManager();
     private SQSWrapper sqs = new SQSWrapper();
+    private SNSWrapper sns = new SNSWrapper();
 
     @Override
     public JSONObject handleRequest(JSONObject input, Context context) {
@@ -93,9 +94,11 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
                         getString(params, "name"),
                         getString(params, "email"),
                         getString(params, "arn"));
-            case "follow":
-                return db.follow(getUserID(input),
-                        getString(params, "userID"));
+            case "follow": {
+                String myID = getUserID(input);
+                JSONObject result =  db.follow(myID, getString(params, "userID"));
+                sns.notifyFollowed((String) result.get("arn"), myID);
+            }
             case "hasCompletedSignUp":
                 return db.hasCompletedSignUp(getUserID(input));
             case "unfollow":
@@ -159,9 +162,9 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
             case "find": {
                 String searchString = getString(params, "searchString");
                 if (searchString.contains("@")) {
-                    return db.findByEmail(searchString);
+                    return db.findByEmail(getUserID(input), searchString);
                 } else {
-                    return db.findByName(searchString);
+                    return db.findByName(getUserID(input), searchString);
                 }
             }
             default:

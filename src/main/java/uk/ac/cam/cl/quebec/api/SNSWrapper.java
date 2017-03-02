@@ -11,12 +11,14 @@ public class SNSWrapper {
         sns = AmazonSNSAsyncClientBuilder.defaultClient();
     }
 
-    public void notifyAddedToEvent(String arn, String eventID) {
+    public void notifyAddedToEvent(String arn, int eventID) {
         // Need to be able to get ARN for user
-        sns.publishAsync(arn, "You've been added to an event!" + eventID);
+        sns.publishAsync(arn, "You've been added to an Event!" + eventID);
     }
 
     public void notifyFollowed(String arn, String followerID) {
-        sns.publishAsync(arn, followerID + " Followed you!");
+        if (arn != null) {
+            sns.publishAsync(arn, followerID + " Followed you!");
+        }
     }
 }

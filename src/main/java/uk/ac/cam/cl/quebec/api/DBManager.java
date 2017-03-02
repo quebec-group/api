@@ -5,6 +5,7 @@ import org.json.simple.JSONObject;
 import org.neo4j.driver.internal.value.RelationshipValue;
 import org.neo4j.driver.v1.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class DBManager {
@@ -130,11 +131,16 @@ public class DBManager {
         Statement statement = new Statement(
                 "MATCH (a:User {userID: {userAID}}) " +
                 "MATCH (b:User {userID: {userBID}}) " +
-                "CREATE UNIQUE (a)-[:FOLLOWS]->(b)",
+                "CREATE UNIQUE (a)-[:FOLLOWS]->(b) " +
+                "RETURN b.arn AS arn",
                 Values.parameters("userAID", userAID, "userBID", userBID));
         StatementResult result = runQuery(statement);
 
-        return successJson();
+        JSONObject json = new JSONObject();
+        while (result.hasNext()) {
+            json.put("arn", result.next().get("arn").asString());
+        }
+        return json;
     }
 
     public JSONObject unfollow(String userAID, String userBID) {
@@ -192,16 +198,22 @@ public class DBManager {
         return successJson();
     }
 
-    public JSONObject addUsersToEvent(int eventID, List<String> members) {
+    public List<String> addUsersToEventAndGetArns(int eventID, List<String> members) {
         Statement statement = new Statement(
                 "MATCH (e:Event {eventID: {eventID}}) " +
                 "MATCH (u:User) " +
                 "WHERE u.userID IN {members} " +
-                "CREATE UNIQUE (u)-[:ATTENDED]->(e)",
+                "CREATE UNIQUE (u)-[:ATTENDED]->(e) " +
+                "RETURN u.arn AS arn",
                 Values.parameters("eventID", eventID, "members", members));
         StatementResult result = runQuery(statement);
 
-        return successJson();
+        ArrayList<String> arns = new ArrayList<>();
+        while (result.hasNext()) {
+            arns.add(result.next().get("arn").asString());
+        }
+
+        return arns;
     }
 
     public JSONObject removeUserFromEvent(int eventID, String userID) {
@@ -350,6 +362,7 @@ public class DBManager {
             user.put("name", userValue.get("name").asString());
             user.put("email", userValue.get("email").asString());
             user.put("profileID", userValue.get("profileThumbnailS3Path", ""));
+            user.put("followsMe", relationshipExists(userValue.get("followsRelation")));
 
             users.add(user);
         }
@@ -371,8 +384,10 @@ public class DBManager {
 
     public JSONObject getFollowing(String userID) {
         Statement statement = new Statement(
-                "MATCH (u:User {userID: {userID}})-[:FOLLOWS]->(users) " +
-                "RETURN users",
+                "MATCH (me:User {userID: {userID}}) " +
+                "MATCH (me)-[:FOLLOWS]->(users) " +
+                "OPTIONAL MATCH (users)-[followsRelation:FOLLOWS]->(me)" +
+                "RETURN users, followsRelation",
                 Values.parameters("userID", userID));
         StatementResult result = runQuery(statement);
 
@@ -381,8 +396,8 @@ public class DBManager {
 
     public JSONObject getFollowers(String userID) {
         Statement statement = new Statement(
-                "MATCH (users)-[:FOLLOWS]->(u:User {userID: {userID}}) " +
-                "RETURN users",
+                "MATCH (users)-[followsRelation:FOLLOWS]->(u:User {userID: {userID}}) " +
+                "RETURN users, followsRelation",
                 Values.parameters("userID", userID));
         StatementResult result = runQuery(statement);
 
@@ -450,24 +465,28 @@ public class DBManager {
         return user;
     }
 
-    public JSONObject findByName(String name) {
+    public JSONObject findByName(String currentID, String name) {
         Statement statement = new Statement(
                 "MATCH (users:User) " +
                 "WHERE users.name CONTAINS {name} " +
-                "RETURN users",
-                Values.parameters("name", name));
+                "MATCH (me:User {userID:{currentID}}) " +
+                "OPTIONAL MATCH (users)-[followsRelation:FOLLOWS]->(me)" +
+                "RETURN users, followsRelation",
+                Values.parameters("name", name, "currentID", currentID));
 
         StatementResult result = runQuery(statement);
 
         return getUsersFromResult(result);
     }
 
-    public JSONObject findByEmail(String email) {
+    public JSONObject findByEmail(String currentID, String email) {
         Statement statement = new Statement(
                 "MATCH (users:User) " +
                 "WHERE users.email = {email} " +
-                "RETURN users",
-                Values.parameters("email", email));
+                "MATCH (me:User {userID:{currentID}}) " +
+                "OPTIONAL MATCH (users)-[followsRelation:FOLLOWS]->(me)" +
+                "RETURN users, followsRelation",
+                Values.parameters("email", email, "currentID", currentID));
 
         StatementResult result = runQuery(statement);
 
