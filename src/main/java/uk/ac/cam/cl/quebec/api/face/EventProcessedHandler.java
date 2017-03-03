@@ -18,13 +18,18 @@ public class EventProcessedHandler implements RequestHandler<EventProcessedLambd
         LambdaOutput response;
 
         try {
+            db.setVideoThumbnail(input.getVideoID(), input.getThumbnailS3Path());
+
             List<String> members = input.getMembers();
-            List<String> arns = db.addUsersToEventAndGetArns(input.getEventID(), members);
-            for (String arn : arns) {
-                sns.notifyAddedToEvent(arn, input.getEventID());
+            List<SNSUser> users = db.addUsersToEventAndGetArns(input.getEventID(), members);
+            SNSUser creator = db.getCreator(input.getEventID());
+
+            for (SNSUser user : users) {
+                sns.notifyAddedToEvent(user, creator.getName());
             }
 
-            db.setVideoThumbnail(input.getVideoID(), input.getThumbnailS3Path());
+            sns.notifyEventFinished(creator, members.size());
+
             response = new LambdaOutput(true);
         } catch (ClientException e) {
             if (context != null) {

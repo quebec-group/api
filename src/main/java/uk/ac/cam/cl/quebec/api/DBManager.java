@@ -4,6 +4,7 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.neo4j.driver.internal.value.RelationshipValue;
 import org.neo4j.driver.v1.*;
+import uk.ac.cam.cl.quebec.api.face.SNSUser;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -200,22 +201,25 @@ public class DBManager {
         return successJson();
     }
 
-    public List<String> addUsersToEventAndGetArns(int eventID, List<String> members) {
+    public List<SNSUser> addUsersToEventAndGetArns(int eventID, List<String> members) {
         Statement statement = new Statement(
                 "MATCH (e:Event {eventID: {eventID}}) " +
                 "MATCH (u:User) " +
                 "WHERE u.userID IN {members} " +
                 "CREATE UNIQUE (u)-[:ATTENDED]->(e) " +
-                "RETURN u.arn AS arn",
+                "RETURN u.arn AS arn, u.name AS name",
                 Values.parameters("eventID", eventID, "members", members));
         StatementResult result = runQuery(statement);
 
-        ArrayList<String> arns = new ArrayList<>();
+        ArrayList<SNSUser> users = new ArrayList<>();
         while (result.hasNext()) {
-            arns.add(result.next().get("arn").asString());
+            Record record = result.next();
+            String arn = record.get("arn").asString();
+            String name = record.get("name").asString();
+            users.add(new SNSUser(arn, name));
         }
 
-        return arns;
+        return users;
     }
 
     public JSONObject removeUserFromEvent(int eventID, String userID) {
@@ -477,11 +481,11 @@ public class DBManager {
     public JSONObject findByName(String currentID, String name) {
         Statement statement = new Statement(
                 "MATCH (users:User) " +
-                "WHERE users.name CONTAINS {name} " +
+                "WHERE users.name =~ {name} " +
                 "MATCH (me:User {userID:{currentID}}) " +
                 "OPTIONAL MATCH (me)-[followsRelation:FOLLOWS]->(users)" +
                 "RETURN users, followsRelation",
-                Values.parameters("name", name, "currentID", currentID));
+                Values.parameters("name", "(?i).*" + name + ".*", "currentID", currentID));
 
         StatementResult result = runQuery(statement);
 
@@ -519,5 +523,32 @@ public class DBManager {
         }
 
         return json;
+    }
+
+    public SNSUser getCreator(int eventID) {
+        Statement statement = new Statement(
+                "MATCH (e:Event {eventID: {eventID}}) " +
+                "MATCH (u:User)-[:CREATED]->(e) " +
+                "RETURN u.arn AS arn, u.name AS name",
+                Values.parameters("eventID", eventID));
+
+        StatementResult result = runQuery(statement);
+
+        Record record = result.next();
+
+        return new SNSUser(record.get("arn").asString(), record.get("name").asString());
+    }
+
+    public SNSUser getUser(String userID) {
+        Statement statement = new Statement(
+                "MATCH (u:User {userID: {userID}}) " +
+                "RETURN u.arn AS arn, u.name AS name",
+                Values.parameters("userID", userID));
+
+        StatementResult result = runQuery(statement);
+
+        Record record = result.next();
+
+        return new SNSUser(record.get("arn").asString(), record.get("name").asString());
     }
 }
