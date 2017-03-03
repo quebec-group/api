@@ -114,7 +114,7 @@ public class DBManager {
 
     public JSONArray getRelatedUsers(String userID) {
         Statement statement = new Statement(
-                "MATCH (u:User {userID: {userID}})-[:FOLLOWS]-(users:User) " +
+                "MATCH (u:User {userID: {userID}})-[*1..3]-(users:User) " +
                 "RETURN users",
                 Values.parameters("userID", userID));
         StatementResult result = runQuery(statement);
@@ -481,7 +481,7 @@ public class DBManager {
     public JSONObject findByName(String currentID, String name) {
         Statement statement = new Statement(
                 "MATCH (users:User) " +
-                "WHERE users.name =~ {name} " +
+                "WHERE users.name =~ {name} AND users.userID <> {currentID} " +
                 "MATCH (me:User {userID:{currentID}}) " +
                 "OPTIONAL MATCH (me)-[followsRelation:FOLLOWS]->(users)" +
                 "RETURN users, followsRelation",
@@ -495,7 +495,7 @@ public class DBManager {
     public JSONObject findByEmail(String currentID, String email) {
         Statement statement = new Statement(
                 "MATCH (users:User) " +
-                "WHERE users.email = {email} " +
+                "WHERE users.email = {email} AND users.userID <> {currentID} " +
                 "MATCH (me:User {userID:{currentID}}) " +
                 "OPTIONAL MATCH (me)-[followsRelation:FOLLOWS]->(users)" +
                 "RETURN users, followsRelation",
