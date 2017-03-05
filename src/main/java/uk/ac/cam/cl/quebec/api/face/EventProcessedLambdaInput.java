@@ -2,6 +2,7 @@ package uk.ac.cam.cl.quebec.api.face;
 
 import java.util.List;
 
+// AWS Lambda will populate this for handleRequest as its a POJO
 public class EventProcessedLambdaInput {
     private int eventID;
     private int videoID;

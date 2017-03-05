@@ -23,7 +23,7 @@ public class SQSWrapper {
         json.put("videoID", videoID);
 
         if (context != null) {
-            context.getLogger().log("Sending: " + json.toString());
+            context.getLogger().log("sendTrainingVideo: " + json.toString());
         }
 
         sqs.sendMessage(VIDEO_QUEUE, json.toString());
@@ -39,7 +39,7 @@ public class SQSWrapper {
         json.put("usersToMatch", usersToMatch);
 
         if (context != null) {
-            context.getLogger().log("Sending: " + json.toString());
+            context.getLogger().log("sendEventVideo: " + json.toString());
         }
 
         sqs.sendMessage(VIDEO_QUEUE, json.toString());

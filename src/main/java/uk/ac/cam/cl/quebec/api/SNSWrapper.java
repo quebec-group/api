@@ -2,6 +2,8 @@ package uk.ac.cam.cl.quebec.api;
 
 import com.amazonaws.services.sns.AmazonSNS;
 import com.amazonaws.services.sns.AmazonSNSClientBuilder;
+import com.amazonaws.services.sns.model.GetEndpointAttributesRequest;
+import com.amazonaws.services.sns.model.GetEndpointAttributesResult;
 import com.amazonaws.services.sns.model.PublishRequest;
 import uk.ac.cam.cl.quebec.api.face.SNSUser;
 
@@ -29,6 +31,10 @@ public class SNSWrapper {
         push(creator.getArn(), "Your event has finished processing. Tagged " + numFound + "people.");
     }
 
+    public void sendMessageToAll(String message) {
+        push(ALL_ARN, message);
+    }
+
     private void push(String arn, String message) {
         if (isArnValid(arn)) {
             PublishRequest request = new PublishRequest();
@@ -40,6 +46,13 @@ public class SNSWrapper {
     }
 
     private boolean isArnValid(String arn) {
-        return arn != null && !arn.isEmpty();
+        if (arn != null && !arn.isEmpty()) {
+            GetEndpointAttributesRequest request = new GetEndpointAttributesRequest();
+            request.withEndpointArn(arn);
+            GetEndpointAttributesResult result = sns.getEndpointAttributes(request);
+            return result.getAttributes().getOrDefault("Enabled", "false").equals("true");
+        }
+
+        return false;
     }
 }

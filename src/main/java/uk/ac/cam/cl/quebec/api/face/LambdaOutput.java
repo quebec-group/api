@@ -1,5 +1,6 @@
 package uk.ac.cam.cl.quebec.api.face;
 
+// AWS Lambda will populate this for handleRequest as its a POJO
 public class LambdaOutput {
     private boolean succeeded;
     private String errorMessage = "";

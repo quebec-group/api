@@ -20,14 +20,17 @@ public class EventProcessedHandler implements RequestHandler<EventProcessedLambd
         try {
             db.setVideoThumbnail(input.getVideoID(), input.getThumbnailS3Path());
 
+            // Get info about members + the creator from db
             List<String> members = input.getMembers();
             List<SNSUser> users = db.addUsersToEventAndGetArns(input.getEventID(), members);
             SNSUser creator = db.getCreator(input.getEventID());
 
+            // Notify all those added
             for (SNSUser user : users) {
                 sns.notifyAddedToEvent(user, creator.getName());
             }
 
+            // Notify the creator the event has finished processing
             sns.notifyEventFinished(creator, members.size());
 
             response = new LambdaOutput(true);

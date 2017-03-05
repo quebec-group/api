@@ -2,15 +2,15 @@ package uk.ac.cam.cl.quebec.api;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
-import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.neo4j.driver.v1.exceptions.ClientException;
+import uk.ac.cam.cl.quebec.api.json.JSON;
 
 import java.util.LinkedHashMap;
 
 // uk.ac.cam.cl.quebec.api.APIHandler::handleRequest
-public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
+public class APIHandler implements RequestHandler<JSON, JSON> {
 
     private JSONParser parser = new JSONParser();
     private DBManager db = new DBManager();
@@ -18,22 +18,22 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
     private SNSWrapper sns = new SNSWrapper();
 
     @Override
-    public JSONObject handleRequest(JSONObject input, Context context) {
-        JSONObject responseJson;
+    public JSON handleRequest(JSON input, Context context) {
+        JSON responseJson;
 
         try {
-            responseJson = new JSONObject();
+            responseJson = new JSON();
             responseJson.put("statusCode", "200");
-            responseJson.put("headers", new JSONObject());
+            responseJson.put("headers", new JSON());
             responseJson.put("body", getResultForQuery(input, context).toString());
         } catch (ParseException|APIException|ClientException e) {
             if (context != null) {
                 context.getLogger().log(e.toString());
             }
 
-            responseJson = new JSONObject();
+            responseJson = new JSON();
             responseJson.put("statusCode", "400");
-            responseJson.put("headers", new JSONObject());
+            responseJson.put("headers", new JSON());
             responseJson.put("body", errorBody(e.getMessage()).toString());
         }
 
@@ -41,17 +41,21 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
         return responseJson;
     }
 
-    private String getUserID(JSONObject input) {
+    // Get the userID in requestContext -> identity -> cognitoIdentityId, set by AWS
+    private String getUserID(JSON input) {
         LinkedHashMap requestContext = (LinkedHashMap) input.get("requestContext");
         LinkedHashMap identity = (LinkedHashMap) requestContext.get("identity");
         return (String) identity.get("cognitoIdentityId");
     }
 
-    private JSONObject getParams(JSONObject input) throws ParseException {
-        return (JSONObject) parser.parse((String) input.get("body"));
+    // Extract the parameters from the raw input JSON
+    private JSON getParams(JSON input) throws ParseException {
+        return (JSON) parser.parse((String) input.get("body"));
     }
 
-    private String getRequest(JSONObject input, Context context) {
+    // Gets the request by finding the path element after /api/
+    // E.g. /api/cat -> cat
+    private String getRequest(JSON input, Context context) {
         String path = (String) input.get("path");
         String request = path.replace("/api/", "");
 
@@ -62,41 +66,19 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
         return request;
     }
 
-    private String getString(JSONObject params, String key) throws APIException {
-        String param = (String) params.get(key);
-
-        if (param == null) {
-            throw new APIException("Parameter '" + key + "' not found");
-        }
-
-        return param;
-    }
-
-    private Integer getInteger(JSONObject params, String key) throws APIException {
-        if (params.containsKey(key) && params.get(key) instanceof Number) {
-            return getInt(params.get(key));
-        }
-
-        throw new APIException("Parameter '" + key + "' not found");
-    }
-
-    private int getInt(Object object) {
-        return ((Number) object).intValue();
-    }
-
-    private JSONObject getResultForQuery(JSONObject input, Context context) throws ParseException, APIException, ClientException {
-        JSONObject params = getParams(input);
+    private JSON getResultForQuery(JSON input, Context context) throws ParseException, APIException, ClientException {
+        JSON params = getParams(input);
         String request = getRequest(input, context);
 
         switch (request) {
             case "createUser":
                 return db.createUser(getUserID(input),
-                        getString(params, "name"),
-                        getString(params, "email"),
-                        getString(params, "arn"));
+                        params.getString("name"),
+                        params.getString("email"),
+                        params.getString("arn"));
             case "follow": {
                 String myID = getUserID(input);
-                JSONObject result =  db.follow(myID, getString(params, "userID"));
+                JSON result =  db.follow(myID, params.getString("userID"));
                 sns.notifyFollowed((String) result.get("arn"), myID);
 
                 return result;
@@ -105,64 +87,64 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
                 return db.hasCompletedSignUp(getUserID(input));
             case "unfollow":
                 return db.unfollow(getUserID(input),
-                        getString(params, "userID"));
+                        params.getString("userID"));
             case "following":
-                return db.getFollowing(getString(params, "userID"));
+                return db.getFollowing(params.getString("userID"));
             case "followers":
-                return db.getFollowers(getString(params, "userID"));
+                return db.getFollowers(params.getString("userID"));
             case "followingCount":
-                return db.getFollowingCount(getString(params, "userID"));
+                return db.getFollowingCount(params.getString("userID"));
             case "followersCount":
-                return db.getFollowersCount(getString(params, "userID"));
+                return db.getFollowersCount(params.getString("userID"));
             case "setTrainingVideo": {
-                String S3ID = getString(params, "S3ID");
+                String S3ID = params.getString("S3ID");
                 String userID = getUserID(input);
 
-                JSONObject response = db.setTrainingVideo(userID, S3ID);
+                JSON response = db.setTrainingVideo(userID, S3ID);
 
                 sqs.sendTrainingVideo(S3ID, userID, (Integer) response.get("videoID"), context);
 
                 return response;
             }
             case "setProfilePicture":
-                return db.setProfilePicture(getUserID(input), getString(params, "S3ID"));
+                return db.setProfilePicture(getUserID(input), params.getString("S3ID"));
             case "addVideoToEvent":
                 return addVideoToEvent(getUserID(input),
-                    getInteger(params, "eventID"), getString(params, "S3ID"), context);
+                        params.getInteger("eventID"), params.getString("S3ID"), context);
             case "createEvent": {
                 String userID = getUserID(input);
-                JSONObject eventResponse = db.createEvent(getString(params, "title"),
-                        getString(params, "location"),
-                        getString(params, "time"),
+                JSON eventResponse = db.createEvent(params.getString("title"),
+                        params.getString("location"),
+                        params.getString("time"),
                         userID);
 
-                String S3ID = getString(params, "videoPath");
-                int eventID = getInt(eventResponse.get("eventID"));
+                String S3ID = params.getString("videoPath");
+                int eventID = params.getInteger("eventID");
 
                 return addVideoToEvent(userID, eventID, S3ID, context);
             }
             case "addUserToEvent":
-                return db.addUserToEvent(getInteger(params, "eventID"),
-                        getString(params, "userID"));
+                return db.addUserToEvent(params.getInteger("eventID"),
+                        params.getString("userID"));
             case "removeFromEvent":
-                return db.removeUserFromEvent(getInteger(params, "eventID"),
+                return db.removeUserFromEvent(params.getInteger("eventID"),
                         getUserID(input));
             case "getEvents":
                 return db.getEvents(getUserID(input));
             case "getAttendedEvents":
-                return db.getAttendedEvents(getString(params, "userID"));
+                return db.getAttendedEvents(params.getString("userID"));
             case "likeEvent":
-                return db.likeEvent(getUserID(input), getInteger(params, "eventID"));
+                return db.likeEvent(getUserID(input), params.getInteger("eventID"));
             case "unlikeEvent":
-                return db.unlikeEvent(getUserID(input), getInteger(params, "eventID"));
+                return db.unlikeEvent(getUserID(input), params.getInteger("eventID"));
             case "getInfo":
                 return db.getInfo(getUserID(input));
             case "followsMe":
-                return db.aFollowsB(getString(params, "userID"), getUserID(input));
+                return db.doesAfollowB(params.getString("userID"), getUserID(input));
             case "iFollow":
-                return db.aFollowsB(getUserID(input), getString(params, "userID"));
+                return db.doesAfollowB(getUserID(input), params.getString("userID"));
             case "find": {
-                String searchString = getString(params, "searchString");
+                String searchString = params.getString("searchString");
                 if (searchString.contains("@")) {
                     return db.findByEmail(getUserID(input), searchString);
                 } else {
@@ -174,18 +156,17 @@ public class APIHandler implements RequestHandler<JSONObject, JSONObject> {
         }
     }
 
-    private JSONObject addVideoToEvent(String userID, int eventID, String S3ID, Context context) {
-        JSONObject response = db.addVideoToEvent(eventID, S3ID);
+    private JSON addVideoToEvent(String userID, int eventID, String S3ID, Context context) throws APIException {
+        JSON response = db.addVideoToEvent(eventID, S3ID);
 
-
-        sqs.sendEventVideo(S3ID, eventID, getInt(response.get("videoID")),
+        sqs.sendEventVideo(S3ID, eventID, response.getInteger("videoID"),
                 db.getRelatedUsers(userID), context);
 
         return response;
     }
 
-    private JSONObject errorBody(String message) {
-        JSONObject error = new JSONObject();
+    private JSON errorBody(String message) {
+        JSON error = new JSON();
         error.put("errorMessage", message);
         return error;
     }
