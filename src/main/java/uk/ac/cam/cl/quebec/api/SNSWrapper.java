@@ -1,15 +1,16 @@
 package uk.ac.cam.cl.quebec.api;
 
-import com.amazonaws.services.sns.AmazonSNSAsync;
-import com.amazonaws.services.sns.AmazonSNSAsyncClientBuilder;
+import com.amazonaws.services.sns.AmazonSNS;
+import com.amazonaws.services.sns.AmazonSNSClientBuilder;
+import com.amazonaws.services.sns.model.PublishRequest;
 import uk.ac.cam.cl.quebec.api.face.SNSUser;
 
 public class SNSWrapper {
-    private AmazonSNSAsync sns;
+    private AmazonSNS sns;
     private static String ALL_ARN = "arn:aws:sns:eu-west-1:926867918335:quebec_alldevices_MOBILEHUB_1062763500";
 
     public SNSWrapper() {
-        sns = AmazonSNSAsyncClientBuilder.defaultClient();
+        sns = AmazonSNSClientBuilder.defaultClient();
     }
 
     public void notifyAddedToEvent(SNSUser user, String eventCreator) {
@@ -30,7 +31,11 @@ public class SNSWrapper {
 
     private void push(String arn, String message) {
         if (isArnValid(arn)) {
-            sns.publishAsync(arn, message);
+            PublishRequest request = new PublishRequest();
+            request.setTargetArn(arn);
+            request.setMessage(message);
+
+            sns.publish(request);
         }
     }
 

@@ -27,7 +27,8 @@ public class DBManager {
     public JSONObject createUser(String userID, String name, String email, String arn) {
         Statement statement = new Statement(
                 "MERGE (u:User {userID: {ID}}) " +
-                "ON CREATE SET u.name = {name}, u.email = {email}, u.arn = {arn}",
+                "ON CREATE SET u.name = {name}, u.email = {email}, u.arn = {arn} " +
+                "ON MATCH SET u.arn = {arn} ",
                 Values.parameters("name", name, "email", email, "ID", userID, "arn", arn));
         StatementResult result = runQuery(statement);
 

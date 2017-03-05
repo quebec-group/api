@@ -16,4 +16,9 @@ public class SNSUser {
     public String getName() {
         return name;
     }
+
+    @Override
+    public String toString() {
+        return "SNSUser name: " + name + ", arn: " + arn;
+    }
 }
