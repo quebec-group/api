@@ -57,8 +57,8 @@ public class APIHandler implements RequestHandler<JSON, JSON> {
 
     // Gets the request by finding the path element after /api/
     // E.g. /api/cat -> cat
-    private String getRequest(JSON input, Context context) {
-        String path = (String) input.get("path");
+    private String getRequest(JSON input, Context context) throws APIException {
+        String path = input.getString("path");
         String request = path.replace("/api/", "");
 
         if (context != null) {
@@ -81,7 +81,7 @@ public class APIHandler implements RequestHandler<JSON, JSON> {
             case "follow": {
                 String myID = getUserID(input);
                 JSON result =  db.follow(myID, params.getString("userID"));
-                sns.notifyFollowed((String) result.get("arn"), myID);
+                sns.notifyFollowed(result.getString("arn"), myID);
 
                 return result;
             }
@@ -104,7 +104,7 @@ public class APIHandler implements RequestHandler<JSON, JSON> {
 
                 JSON response = db.setTrainingVideo(userID, S3ID);
 
-                sqs.sendTrainingVideo(S3ID, userID, (Integer) response.get("videoID"), context);
+                sqs.sendTrainingVideo(S3ID, userID, response.getInteger("videoID"), context);
 
                 return response;
             }
