@@ -47,8 +47,7 @@ public class DBManager {
         JSON json = new JSON();
         while (result.hasNext()) {
             Record record = result.next();
-            boolean setupComplete = record.get("trainingVideoCount").asInt() > 0
-                    && !record.get("u").get("profileThumbnailS3Path","").isEmpty();
+            boolean setupComplete = record.get("trainingVideoCount").asInt() > 0;
             json.put("hasCompletedSignUp", setupComplete);
         }
 
