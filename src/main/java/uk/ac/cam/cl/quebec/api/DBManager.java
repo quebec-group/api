@@ -48,7 +48,7 @@ public class DBManager {
         while (result.hasNext()) {
             Record record = result.next();
             boolean setupComplete = record.get("trainingVideoCount").asInt() > 0
-                    && record.get("u").containsKey("profileThumbnailS3Path");
+                    && !record.get("u").get("profileThumbnailS3Path","").isEmpty();
             json.put("hasCompletedSignUp", setupComplete);
         }
 
@@ -218,7 +218,7 @@ public class DBManager {
     public JSON getAttendedEvents(String userID) {
         Statement statement = new Statement(
                 "MATCH (caller:User {userID: {userID}})-[:ATTENDED]->(events:Event) " +
-                "MATCH (events)-[:ATTENDED]-(atEvent:User) " +
+                "MATCH (events)-[:ATTENDED|CREATED]-(atEvent:User) " +
                 "OPTIONAL MATCH (events)-[:VIDEO]-(eventVideos:Video) " +
                 "OPTIONAL MATCH (atEvent)-[l:LIKES]-(events) " +
                 "OPTIONAL MATCH (atEvent)-[c:CREATED]-(events) " +

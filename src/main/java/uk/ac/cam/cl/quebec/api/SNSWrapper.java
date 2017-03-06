@@ -48,7 +48,7 @@ public class SNSWrapper {
     private boolean isArnValid(String arn) {
         if (arn != null && !arn.isEmpty()) {
             GetEndpointAttributesRequest request = new GetEndpointAttributesRequest();
-            request.withEndpointArn(arn);
+            request.setEndpointArn(arn);
             GetEndpointAttributesResult result = sns.getEndpointAttributes(request);
             return result.getAttributes().getOrDefault("Enabled", "false").equals("true");
         }

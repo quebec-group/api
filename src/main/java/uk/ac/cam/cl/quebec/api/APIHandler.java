@@ -4,6 +4,7 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
+import org.json.simple.JSONObject;
 import org.neo4j.driver.v1.exceptions.ClientException;
 import uk.ac.cam.cl.quebec.api.json.JSON;
 
@@ -50,7 +51,8 @@ public class APIHandler implements RequestHandler<JSON, JSON> {
 
     // Extract the parameters from the raw input JSON
     private JSON getParams(JSON input) throws ParseException {
-        return (JSON) parser.parse((String) input.get("body"));
+        JSONObject json = (JSONObject) parser.parse((String) input.get("body"));
+        return new JSON(json);
     }
 
     // Gets the request by finding the path element after /api/
@@ -119,7 +121,7 @@ public class APIHandler implements RequestHandler<JSON, JSON> {
                         userID);
 
                 String S3ID = params.getString("videoPath");
-                int eventID = params.getInteger("eventID");
+                int eventID = eventResponse.getInteger("eventID");
 
                 return addVideoToEvent(userID, eventID, S3ID, context);
             }

@@ -4,6 +4,16 @@ import org.json.simple.JSONObject;
 import uk.ac.cam.cl.quebec.api.APIException;
 
 public class JSON extends JSONObject {
+
+    public JSON() {
+        super();
+    }
+
+    public JSON(JSONObject toWrap) {
+        super();
+        toWrap.forEach(this::putIfAbsent);
+    }
+
     public String getString(String key) throws APIException {
         if (containsKey(key) && get(key) instanceof String) {
             return (String) get(key);
